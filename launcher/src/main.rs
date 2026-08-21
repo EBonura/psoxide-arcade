@@ -1456,9 +1456,7 @@ fn read_shots(header: Option<&Header>, entries: &[Entry], count: usize) -> u32 {
     let reader = unsafe { &mut *core::ptr::addr_of_mut!(READER) };
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(SHOTS) };
     let sectors = total as usize * disc_toc::SHOT_SECTORS as usize;
-    let mut ok = unsafe {
-        reader.prepare() && reader.start_read(disc_base::shift_lba(header.shots_lba))
-    };
+    let mut ok = unsafe { reader.prepare() && reader.start_read(header.shots_lba) };
     for chunk in buffer.chunks_exact_mut(SECTOR_WORDS).take(sectors) {
         let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
         ok = ok && unsafe { reader.read_sector(slot) };
@@ -1501,9 +1499,7 @@ fn read_spectrum(header: Option<&Header>) -> u32 {
     let reader = unsafe { &mut *core::ptr::addr_of_mut!(READER) };
     let buffer = unsafe { &mut *core::ptr::addr_of_mut!(SPECTRUM) };
 
-    let mut ok = unsafe {
-        reader.prepare() && reader.start_read(disc_base::shift_lba(header.spectrum_lba))
-    };
+    let mut ok = unsafe { reader.prepare() && reader.start_read(header.spectrum_lba) };
     for chunk in buffer.chunks_exact_mut(SECTOR_WORDS).take(sectors) {
         let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
         ok = ok && unsafe { reader.read_sector(slot) };
@@ -1568,7 +1564,7 @@ fn read_toc(entries: &mut [Entry; MAX_ENTRIES]) -> Option<Header> {
 
     // The table spans more than one sector now; `read_sector` walks the same
     // ReadN stream, so they arrive back to back.
-    let mut ok = unsafe { reader.prepare() && reader.start_read(disc_base::shift_lba(TOC_LBA)) };
+    let mut ok = unsafe { reader.prepare() && reader.start_read(TOC_LBA) };
     for chunk in sector.chunks_exact_mut(SECTOR_WORDS) {
         let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
         ok = ok && unsafe { reader.read_sector(slot) };
@@ -1623,7 +1619,7 @@ fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
         let blob: unsafe extern "C" fn(u32, u32, u32, u32) -> ! =
             core::mem::transmute(LOADER_BASE as usize);
         blob(
-            disc_base::shift_lba(entry.exe_lba),
+            entry.exe_lba,
             disc_base::shift_lba(entry.lba_offset),
             entry
                 .cdda_track_base
