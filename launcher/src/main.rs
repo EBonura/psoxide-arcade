@@ -1618,8 +1618,12 @@ fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
         psx_rt::cache::flush_i_cache();
         let blob: unsafe extern "C" fn(u32, u32, u32, u32) -> ! =
             core::mem::transmute(LOADER_BASE as usize);
+        // The copied loader is its own linked image, so its SectorReader has
+        // no access to this launcher's installed disc base. Resolve the EXE
+        // LBA here; pass the combined data/audio bases separately for the
+        // child runtime to install at _start.
         blob(
-            entry.exe_lba,
+            disc_base::shift_lba(entry.exe_lba),
             disc_base::shift_lba(entry.lba_offset),
             entry
                 .cdda_track_base
