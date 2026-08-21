@@ -92,22 +92,22 @@ const VOICE_LOSE: Voice = Voice::V3;
 const SFX_BANK: [sfx::Sample<'static>; 4] = [
     sfx::Sample {
         voice: VOICE_WALL,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/ui_beep.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
         volume: Volume::linear(1, 6),
     },
     sfx::Sample {
         voice: VOICE_PADDLE,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/hit_punch.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_punch.psau"),
         volume: Volume::linear(1, 5),
     },
     sfx::Sample {
         voice: VOICE_BRICK,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/hit_metal.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_metal.psau"),
         volume: Volume::linear(1, 7),
     },
     sfx::Sample {
         voice: VOICE_LOSE,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/explosion_short.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/explosion_short.psau"),
         volume: Volume::linear(1, 7),
     },
 ];

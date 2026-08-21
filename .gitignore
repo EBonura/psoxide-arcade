@@ -1,0 +1,7 @@
+/.psoxide/
+/build/
+/dist/
+/captures/
+**/target/
+.DS_Store
+

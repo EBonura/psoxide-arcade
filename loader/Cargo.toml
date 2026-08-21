@@ -3,15 +3,17 @@
 cargo-features = ["trim-paths"]
 
 [package]
-name    = "game-breakout"
+name    = "loader"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-2.0-or-later"
 
+# Standalone: this crate links at its own base address with its own linker
+# script, so it must not join any workspace.
 [workspace]
 
 [[bin]]
-name = "game-breakout"
+name = "loader"
 path = "src/main.rs"
 
 [profile.release]
@@ -20,16 +22,14 @@ path = "src/main.rs"
 # string in .rodata, which on the PS1 means the developer's home directory
 # occupies console RAM and ships on the public disc image.
 trim-paths    = "all"
-panic = "abort"
+panic         = "abort"
 codegen-units = 1
-lto = true
+lto           = true
+opt-level     = "s"
 
 [dependencies]
-psx-engine = { path = "../../crates/psx-engine" }
-psx-font   = { path = "../../../sdk/crates/psx-font" }
-psx-fx     = { path = "../../../sdk/crates/psx-fx" }
-psx-gpu    = { path = "../../../sdk/crates/psx-gpu" }
-psx-rt     = { path = "../../../sdk/crates/psx-rt" }
-psx-settings = { path = "../../../sdk/crates/psx-settings" }
-psx-spu    = { path = "../../../sdk/crates/psx-spu" }
-psx-vram   = { path = "../../../sdk/crates/psx-vram" }
+psx-pack = { path = "../.psoxide/sdk/crates/psx-pack" }
+psx-io   = { path = "../.psoxide/sdk/crates/psx-io" }
+# Data only: the checklist borrows the SDK's 8x8 font table and draws it
+# with GP0 rectangles itself, so none of psx-font's VRAM code is linked.
+psx-font = { path = "../.psoxide/sdk/crates/psx-font" }

@@ -1,0 +1,15 @@
+[package]
+name    = "mkdisc"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+
+[workspace]
+
+[[bin]]
+name = "mkdisc"
+path = "src/main.rs"
+
+[dependencies]
+disc-toc = { path = "../../disc-toc" }
+psx-iso  = { path = "../../.psoxide/crates/psx-iso" }

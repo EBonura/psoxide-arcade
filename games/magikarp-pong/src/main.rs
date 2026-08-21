@@ -126,22 +126,22 @@ const VOICE_FLYBY: Voice = Voice::V3;
 const SFX_BANK: [sfx::Sample<'static>; 4] = [
     sfx::Sample {
         voice: VOICE_WALL,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/ui_beep.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
         volume: Volume::linear(1, 6),
     },
     sfx::Sample {
         voice: VOICE_PADDLE,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/hit_punch.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_punch.psau"),
         volume: Volume::linear(1, 5),
     },
     sfx::Sample {
         voice: VOICE_SCORE,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/pickup_coin.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/pickup_coin.psau"),
         volume: Volume::linear(1, 6),
     },
     sfx::Sample {
         voice: VOICE_FLYBY,
-        bytes: include_bytes!("../../../../assets/audio/freesfx/psau/swoosh.psau"),
+        bytes: include_bytes!("../../../assets/audio/freesfx/psau/swoosh.psau"),
         volume: Volume::linear(1, 3),
     },
 ];
