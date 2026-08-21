@@ -1,4 +1,5 @@
 ROOT := $(CURDIR)
+VERSION := 0.1.0
 PSOXIDE := $(ROOT)/.psoxide
 PSOXIDE_FROM ?=
 BUILD := $(ROOT)/build
@@ -43,7 +44,7 @@ loader: psoxide
 
 launcher: loader
 	cd launcher && CARGO_TARGET_DIR=$(GUEST_BUILD) \
-		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v0.1.0 \
+		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
 
 games: psoxide
@@ -91,4 +92,3 @@ run: disc
 
 clean:
 	rm -rf $(BUILD) $(DIST)
-
