@@ -24,7 +24,9 @@
 
 extern crate psx_rt;
 
-use psx_engine::{button, sfx, App, Config, Ctx, MicrogameAction, MicrogameShell, Scene, SimTick};
+use psx_engine::{
+    button, sfx, App, Config, Ctx, MicrogameAction, MicrogameScreen, MicrogameShell, Scene, SimTick,
+};
 use psx_font::{fonts::BASIC_8X16, u16_hex, FontAtlas};
 use psx_fx::{LcgRng, ParticlePool, ShakeState};
 use psx_gpu::ot::OrderingTable;
@@ -716,6 +718,9 @@ impl Invaders {
             Phase::Playing => {}
         }
         self.shell.draw(font, "INVADERS");
+        if self.shell.screen() == MicrogameScreen::Title {
+            psx_gpu::draw_rect_flat(52, 193, 216, 18, 12, 20, 38);
+        }
     }
 }
 
