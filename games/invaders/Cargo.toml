@@ -3,7 +3,7 @@
 cargo-features = ["trim-paths"]
 
 [package]
-name    = "game-magikaaaaaarp-pong"
+name    = "game-invaders"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-2.0-or-later"
@@ -11,7 +11,7 @@ license = "GPL-2.0-or-later"
 [workspace]
 
 [[bin]]
-name = "game-magikaaaaaarp-pong"
+name = "game-invaders"
 path = "src/main.rs"
 
 [profile.release]
@@ -25,13 +25,11 @@ codegen-units = 1
 lto = true
 
 [dependencies]
-psx-asset  = { path = "../../../sdk/crates/psx-asset" }
-psx-engine = { path = "../../crates/psx-engine", features = ["boot-trace"] }
-psx-font   = { path = "../../../sdk/crates/psx-font" }
-psx-gpu    = { path = "../../../sdk/crates/psx-gpu" }
-psx-io     = { path = "../../../sdk/crates/psx-io" }
-psx-math   = { path = "../../../sdk/crates/psx-math" }
-psx-rt     = { path = "../../../sdk/crates/psx-rt", features = ["boot-trace"] }
-psx-settings = { path = "../../../sdk/crates/psx-settings" }
-psx-spu    = { path = "../../../sdk/crates/psx-spu" }
-psx-vram   = { path = "../../../sdk/crates/psx-vram" }
+psx-engine = { path = "../../.psoxide/engine/crates/psx-engine", features = ["boot-trace"] }
+psx-font   = { path = "../../.psoxide/sdk/crates/psx-font" }
+psx-fx     = { path = "../../.psoxide/sdk/crates/psx-fx" }
+psx-gpu    = { path = "../../.psoxide/sdk/crates/psx-gpu" }
+psx-rt     = { path = "../../.psoxide/sdk/crates/psx-rt", features = ["boot-trace"] }
+psx-settings = { path = "../../.psoxide/sdk/crates/psx-settings" }
+psx-spu    = { path = "../../.psoxide/sdk/crates/psx-spu" }
+psx-vram   = { path = "../../.psoxide/sdk/crates/psx-vram" }

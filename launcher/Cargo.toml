@@ -1,0 +1,41 @@
+# `trim-paths` is a nightly cargo feature; these crates are nightly-pinned
+# anyway (bare-metal MIPS needs build-std), so the gate costs nothing.
+cargo-features = ["trim-paths"]
+
+[package]
+name    = "launcher"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+
+# Outside any workspace: this links for the PS1 with psoxide.ld.
+[workspace]
+
+[[bin]]
+name = "launcher"
+path = "src/main.rs"
+
+[profile.release]
+# Keep absolute host paths out of the shipped binary. rustc records the
+# source path of every panic/assert site (core::panic::Location) as a
+# string in .rodata, which on the PS1 means the developer's home directory
+# occupies console RAM and ships on the public disc image.
+trim-paths    = "all"
+panic         = "abort"
+codegen-units = 1
+lto           = true
+
+[dependencies]
+psx-font = { path = "../.psoxide/sdk/crates/psx-font" }
+psx-gpu  = { path = "../.psoxide/sdk/crates/psx-gpu" }
+psx-pack = { path = "../.psoxide/sdk/crates/psx-pack" }
+psx-pad  = { path = "../.psoxide/sdk/crates/psx-pad" }
+psx-rt   = { path = "../.psoxide/sdk/crates/psx-rt" }
+psx-vram = { path = "../.psoxide/sdk/crates/psx-vram" }
+psx-math = { path = "../.psoxide/sdk/crates/psx-math" }
+carousel = { path = "../carousel" }
+psx-io   = { path = "../.psoxide/sdk/crates/psx-io" }
+psx-spu  = { path = "../.psoxide/sdk/crates/psx-spu" }
+psx-asset = { path = "../.psoxide/sdk/crates/psx-asset" }
+psx-sfx  = { path = "../.psoxide/sdk/crates/psx-sfx" }
+disc-toc = { path = "../disc-toc" }

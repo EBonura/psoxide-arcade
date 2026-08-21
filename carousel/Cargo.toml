@@ -1,0 +1,15 @@
+[package]
+name    = "carousel"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+
+# Geometry only, no MMIO, so it builds and tests on the host as well as the
+# guest. The launcher owns the drawing.
+[workspace]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+psx-math = { path = "../.psoxide/sdk/crates/psx-math" }

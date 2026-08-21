@@ -1,0 +1,11 @@
+[package]
+name = "psoxide-arcade-pin"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+psoxide-link = { git = "https://github.com/EBonura/PSoXide.git", rev = "588d7637a4cb49209d3072438110683b921bb634" }
+
