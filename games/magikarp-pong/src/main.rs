@@ -10,7 +10,7 @@ extern crate psx_rt;
 use psx_asset::Texture;
 use psx_engine::{
     button, sfx, ActionBinding, ActionMap, Angle, App, Config, Ctx, MicrogameAction,
-    MicrogameShell, Scene, SimTick,
+    MicrogameScreen, MicrogameShell, Scene, SimTick,
 };
 use psx_font::{fonts::BASIC_8X16, FontAtlas};
 use psx_gpu::material::TextureMaterial;
@@ -735,6 +735,9 @@ impl MagikaaaaaarpPong {
             font.draw_text((SCREEN_W - 8 * 7) / 2, SCORE_Y, "2P MODE", MUTED_INK);
         }
         self.shell.draw(font, "MAGIKARP PONG");
+        if self.shell.screen() == MicrogameScreen::Title {
+            psx_gpu::draw_rect_flat(52, 193, 216, 18, 12, 20, 38);
+        }
     }
 }
 
