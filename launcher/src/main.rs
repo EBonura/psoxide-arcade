@@ -82,6 +82,20 @@ const ICONS_COUNT: i16 = 6;
 static ICONS_TEX: &[u8] = include_bytes!("../assets/icons.tex");
 static ICONS_CLUT_DATA: &[u8] = include_bytes!("../assets/icons.clut");
 
+/// Three always-resident 4bpp game thumbnails, packed into one texture page.
+/// Each owns its own sixteen-colour palette, so Breakout, Invaders and Pong
+/// retain their distinct original colours without runtime CLUT rewrites.
+const CARDS_TPAGE: Tpage = Tpage::new(512, 256, TexDepth::Bit4);
+const CARDS_CLUTS: [Clut; 3] = [
+    Clut::new(512, 508),
+    Clut::new(528, 508),
+    Clut::new(544, 508),
+];
+const CARD_ART_W: i16 = 72;
+const CARD_ART_H: i16 = 54;
+static CARDS_TEX: &[u8] = include_bytes!(env!("ARCADE_CARDS_TEX"));
+static CARDS_CLUT_DATA: &[u8] = include_bytes!(env!("ARCADE_CARDS_CLUT"));
+
 /// Which mark leads the row, and the URL written out in full. Full because
 /// the whole point of the card is that someone photographs or retypes these;
 /// the first cut showed only the part after the slash and read as "which
@@ -95,18 +109,15 @@ const LINKS: [(i16, &str); 6] = [
     (5, "youtube.com/@magikAAAAArp/videos"),
 ];
 
-const TITLE: (u8, u8, u8) = (255, 84, 62);
-const HINT: (u8, u8, u8) = (168, 44, 40);
-const NOW_PLAYING: (u8, u8, u8) = (172, 40, 34);
-const TRACK_NAME: (u8, u8, u8) = (255, 88, 64);
-const BLURB: (u8, u8, u8) = (255, 206, 196);
-const LABEL: (u8, u8, u8) = (255, 255, 255);
-const FAR_LABEL: (u8, u8, u8) = (215, 78, 62);
+const TITLE: (u8, u8, u8) = (244, 244, 236);
+const NOW_PLAYING: (u8, u8, u8) = (151, 174, 255);
+const TRACK_NAME: (u8, u8, u8) = (255, 218, 66);
+const BLURB: (u8, u8, u8) = (238, 240, 235);
+const LABEL: (u8, u8, u8) = (248, 248, 240);
+const FAR_LABEL: (u8, u8, u8) = (154, 169, 226);
 const ERROR: (u8, u8, u8) = (255, 214, 90);
 
-/// The carousel entry that shows the credits instead of running something.
-/// `split_title` breaks it at the space nearest the middle, so the pill
-/// reads CREDITS over AND LINKS.
+/// The control-deck entry that shows credits instead of running something.
 const CREDITS_NAME: &str = "CREDITS AND LINKS";
 
 /// The reveal sequence for gated entries: up, up, down, down, left, right,
@@ -136,41 +147,36 @@ const KONAMI_BUTTONS: [u16; 6] = [
     button::CROSS,
 ];
 
-/// Widest line the description cache fits at the small font.
-const WRAP_CHARS: usize = disc_toc::DESC_COLUMNS;
 const DESC_LEADING: i16 = 9;
 
-/// Purpose-built arcade layout. The current game lives in a physical cabinet
-/// on the left. Its description and jukebox occupy the right, and four fixed
-/// bank keys replace the parent demo disc's orbiting carousel.
-const HEADER_H: i16 = 34;
-const BANNER_Y: i16 = 4;
-const CAB_X: i16 = 5;
-const CAB_Y: i16 = 39;
-const CAB_W: i16 = 140;
-const CAB_H: i16 = 160;
-const SHOT_X: i16 = CAB_X + 10;
-const SHOT_Y: i16 = CAB_Y + 38;
-const INFO_X: i16 = 151;
-const INFO_Y: i16 = 43;
-const INFO_W: i16 = 160;
-const INFO_H: i16 = 116;
-const TEXT_X: i16 = INFO_X + (INFO_W - paint::CACHE_W) / 2;
-const TEXT_Y: i16 = INFO_Y + 17;
-const JUKE_X: i16 = INFO_X;
-const JUKE_Y: i16 = 166;
-const JUKE_W: i16 = INFO_W;
-const JUKE_H: i16 = 33;
+/// Capcom Arcade Stadium-inspired game-select screen. Three game cards remain
+/// visible together inside the cabinet monitor, while credits and the jukebox
+/// sit on the physical control deck below it.
+const BANNER_Y: i16 = 3;
+const DISC_VERSION_X: i16 = 7;
+const DISC_VERSION_Y: i16 = 10;
+const LANGUAGE_X: i16 = 303;
+const LANGUAGE_Y: i16 = 10;
+const GAME_SELECT_Y: i16 = 37;
+const GAME_CARD_X: [i16; 3] = [38, 124, 210];
+const GAME_CARD_Y: i16 = 49;
+const GAME_CARD_W: i16 = 80;
+const GAME_CARD_H: i16 = 84;
+const SELECTED_TITLE_Y: i16 = 140;
+const SELECTED_VERSION_Y: i16 = 153;
+const JUKE_X: i16 = 30;
+const JUKE_Y: i16 = 196;
+const JUKE_W: i16 = 198;
+const JUKE_H: i16 = 34;
 const MUSIC_X: i16 = JUKE_X + 6;
 const METER_X: i16 = JUKE_X + JUKE_W - 68;
 const MUSIC_TOP: i16 = JUKE_Y + 4;
 const TRACK_TOP: i16 = JUKE_Y + 13;
 const METER_BASE: i16 = JUKE_Y + 29;
-const TAB_MARGIN: i16 = 7;
-const TAB_GAP: i16 = 3;
-const TAB_Y: i16 = 205;
-const TAB_H: i16 = 29;
-const TAB_W: i16 = (320 - TAB_MARGIN * 2 - TAB_GAP * 3) / 4;
+const CREDITS_KEY_X: i16 = 236;
+const CREDITS_KEY_Y: i16 = JUKE_Y;
+const CREDITS_KEY_W: i16 = 56;
+const CREDITS_KEY_H: i16 = 30;
 
 /// Credits take over the cabinet/info band but retain the same bank keys.
 const CARD_W: i16 = 212;
@@ -179,7 +185,7 @@ const CARD_X: i16 = (320 - CARD_W) / 2;
 const CARD_COLS: usize = ((CARD_W - 8) / 5) as usize;
 /// Rows the credits box holds at the description leading.
 const CRED_ROWS: i16 = 5;
-const CRED_Y: i16 = HEADER_H + 4;
+const CRED_Y: i16 = 38;
 const CRED_H: i16 = CRED_ROWS * DESC_LEADING + 7;
 const LINKS_Y: i16 = CRED_Y + CRED_H + 2;
 /// A links row is a 12px mark with the URL's 8px font centred beside it.
@@ -269,8 +275,6 @@ static SFX_SELECT: &[u8] =
 /// starfield accelerates through before the fade takes the screen.
 static SFX_LAUNCH: &[u8] = include_bytes!("../../.psoxide/assets/audio/freesfx/psau/swoosh.psau");
 
-/// Idle frames before the marquee bulbs switch to their brighter attract chase.
-const ATTRACT_AFTER: u32 = 60 * 20;
 /// Frames the launch fade takes. Long enough to read as deliberate, short
 /// enough that nobody waits for it.
 const FADE_FRAMES: i32 = 14;
@@ -288,28 +292,6 @@ static mut TOC_SECTOR: [u32; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize] =
 const SPECTRUM_MAX_SECTORS: usize = 192;
 static mut SPECTRUM: [u32; SECTOR_WORDS * SPECTRUM_MAX_SECTORS] =
     [0; SECTOR_WORDS * SPECTRUM_MAX_SECTORS];
-
-/// Every screenshot on the disc, cached whole at boot for the same reason
-/// the spectrum is: once the menu music has the drive, a disc read means a
-/// seek away from the audio and back, audible every time. Swapping a shot
-/// from RAM is a moment of DMA instead. ~200 KiB of .bss.
-const SHOT_SLOT_WORDS: usize = disc_toc::SHOT_SECTORS as usize * SECTOR_WORDS;
-static mut SHOTS: [u32; SHOT_SLOT_WORDS * disc_toc::MAX_SHOTS] =
-    [0; SHOT_SLOT_WORDS * disc_toc::MAX_SHOTS];
-
-/// Full brightness for the shot, in GPU tint units.
-const SHOT_FULL: i32 = 128;
-/// Tint steps per frame: out faster than in, so a browse feels like the menu
-/// answering rather than the old image lingering under the new pill. The
-/// single VRAM slot only swaps at black, which is what makes the upload
-/// invisible.
-const SHOT_FADE_IN: i32 = 10;
-const SHOT_FADE_OUT: i32 = 16;
-/// Frames a shot rests before a multi-shot entry moves to its next one.
-/// Seven seconds read as a stall on the console and three still lingered:
-/// the fade carries the transition, so the hold only has to be long enough
-/// to take the image in.
-const SHOT_SLIDE_FRAMES: u32 = 90;
 
 #[no_mangle]
 fn main() {
@@ -339,6 +321,14 @@ fn main() {
         ICONS_CLUT,
         ICONS_CELL,
     );
+    let cards = paint::ArcadeCards::upload(
+        CARDS_TEX,
+        CARDS_CLUT_DATA,
+        CARD_ART_W,
+        CARD_ART_H,
+        CARDS_TPAGE,
+        CARDS_CLUTS,
+    );
 
     let mut all_entries = [Entry::new("", 0, 0, 0); MAX_ENTRIES];
     // Read the table before a note of music plays: a data read while the
@@ -359,10 +349,6 @@ fn main() {
     // Before the music starts, for the same reason the table is: reading the
     // disc while it plays CD-DA is what this hardware is worst at.
     let spectrum_frames = read_spectrum(header.as_ref());
-    // The whole region, gated entries included: unlocking must not need the
-    // drive back.
-    let shot_total = read_shots(header.as_ref(), &all_entries, all_count);
-
     let menu_track = header.map_or(0, |h| h.menu_track) as u8;
     let menu_track_count = header.map_or(0, |h| h.menu_track_count).max(1) as u8;
     // Which of the run is playing. Cycling beats looping one track when the
@@ -440,27 +426,21 @@ fn main() {
     // Frames into the launch warp, or -1 while the menu is just a menu.
     let mut warp: i32 = -1;
     let mut launch_index = 0usize;
-    // Browse glow on the fixed game-bank keys. It decays without moving the
-    // layout, so selection feels physical rather than like another carousel.
-    let mut browse_flash: u8 = 0;
     let mut italian = false;
     let mut prev_held = ButtonState::default();
-    // Frames since the pad last did anything.
-    let mut idle: u32 = 0;
-    let mut text_cache = paint::TextCache::new();
     // The credits card's two boxes never change, so these render once and
     // are blitted for the rest of the run. Key 0 is as good as any.
     let mut credits_cache = paint::TextCache::at(CRED_CACHE_V, CARD_W - 2, CRED_H - 2);
     let mut links_cache = paint::TextCache::at(LINKS_CACHE_V, CARD_W - 2, LINKS_H - 2);
-    // The backdrop: which cached shot is in VRAM, how bright it is drawn,
-    // and the slideshow clock. -1 means the single VRAM slot holds nothing
-    // worth showing.
-    let mut shot_shown: i32 = -1;
-    let mut shot_level: i32 = 0;
-    let mut shot_cycle: u8 = 0;
-    let mut shot_dwell: u32 = 0;
-    let mut shot_entry: usize = usize::MAX;
-
+    if let Some(ref header) = header {
+        credits_cache.begin(0);
+        render_credits(&small, header);
+        credits_cache.end(&fb);
+        links_cache.begin(0);
+        render_links(&small, &icons);
+        links_cache.end(&fb);
+        gpu::draw_sync();
+    }
     loop {
         tick = tick.wrapping_add(1);
         // One slot past the last track is MUSIC OFF: the L1/R1 cycle
@@ -583,21 +563,6 @@ fn main() {
                 }
             }
         }
-        let touched = [
-            button::LEFT,
-            button::RIGHT,
-            button::UP,
-            button::DOWN,
-            button::L1,
-            button::R1,
-            button::CROSS,
-            button::START,
-        ]
-        .iter()
-        .any(|b| pressed(*b));
-        idle = if touched { 0 } else { idle.saturating_add(1) };
-        let attract = idle > ATTRACT_AFTER;
-
         let loading = menu_track != 0 && !music.started();
         // The pad goes quiet once a launch is under way: the warp is short,
         // and half a browse queued behind it would land in the game.
@@ -645,7 +610,6 @@ fn main() {
                 let browse = pressed(button::RIGHT) as i32 - pressed(button::LEFT) as i32;
                 if browse != 0 {
                     selected += browse;
-                    browse_flash = u8::MAX;
                     sfx.play_on(SFX_BROWSE_SLOT, &sfx_browse, tick);
                 }
                 if (pressed(button::CROSS) && !code_cross) || pressed(button::START) {
@@ -675,8 +639,6 @@ fn main() {
                 boot(&entries[launch_index], &mut fb);
             }
         }
-        browse_flash = browse_flash.saturating_sub(18);
-
         // Everything visual answers the beat. The grid was measured off the
         // audio and shipped in the table, so this stays in step for the whole
         // length of a track rather than drifting out of it. `song_ms` was
@@ -687,119 +649,46 @@ fn main() {
             }
             _ => carousel::Beat::default(),
         };
-        fb.clear(2, 0, 8);
-        paint::arcade_backdrop(tick, beat.pulse, attract);
-
-        paint::header_strip(HEADER_H);
+        fb.clear(0, 0, 6);
+        paint::selection_cabinet(beat.pulse);
         banner.draw(160 - BANNER_W / 2, BANNER_Y);
-        centred(&small, HEADER_H - 8, "ARCADE COLLECTION", TITLE);
-        small.draw_text(4, HEADER_H - 8, DISC_VERSION, HINT);
+        small.draw_text(DISC_VERSION_X, DISC_VERSION_Y, DISC_VERSION, NOW_PLAYING);
+        small.draw_text(
+            LANGUAGE_X,
+            LANGUAGE_Y,
+            if italian { "IT" } else { "EN" },
+            NOW_PLAYING,
+        );
 
         if count == 0 {
             centred(&font, 106, "DISC TABLE OF CONTENTS UNREADABLE", ERROR);
         } else {
             let index = selected.rem_euclid(count as i32) as usize;
-            // The block only changes when the selection or language does, so
-            // it is rendered off-screen once and blitted into the game file.
-            let key = (index as u32) << 2 | (unlocked as u32) << 1 | italian as u32;
             let hide_text = warp >= 0 || debug;
-            if hide_text {
-                // The launch shutter or diagnostics owns the foreground.
-            } else if entries[index].exe_lba == 0 {
-                if !credits_cache.holds(0) {
-                    credits_cache.begin(0);
-                    render_credits(&small, &header.expect("count came from it"));
-                    credits_cache.end(&fb);
-                }
-                if !links_cache.holds(0) {
-                    links_cache.begin(0);
-                    render_links(&small, &icons);
-                    links_cache.end(&fb);
-                }
-            } else if !text_cache.holds(key) {
-                text_cache.begin(key);
-                render_description(&small, &entries[index], italian);
-                text_cache.end(&fb);
-            }
-            // The cabinet CRT has one VRAM slot. Fade the old capture to black,
-            // swap the texture, then bring the new game up without tearing.
-            let shot_desired: i32 = if shot_total == 0 || hide_text {
-                -1
-            } else {
-                let entry = &entries[index];
-                if shot_entry != index {
-                    shot_entry = index;
-                    shot_cycle = 0;
-                    shot_dwell = 0;
-                }
-                if entry.shot_count == 0
-                    || (entry.shot_first as u32 + entry.shot_count as u32) > shot_total
-                {
-                    -1
-                } else {
-                    if entry.shot_count > 1 && shot_dwell >= SHOT_SLIDE_FRAMES {
-                        shot_cycle = (shot_cycle + 1) % entry.shot_count;
-                        shot_dwell = 0;
-                    }
-                    (entry.shot_first + shot_cycle) as i32
-                }
-            };
-            if shot_desired != shot_shown {
-                shot_level -= SHOT_FADE_OUT;
-                if shot_level <= 0 {
-                    shot_level = 0;
-                    if shot_desired >= 0 {
-                        paint::upload_shot(shot_bytes(shot_desired as u8));
-                    }
-                    shot_shown = shot_desired;
-                }
-            } else if shot_shown >= 0 {
-                shot_level = (shot_level + SHOT_FADE_IN).min(SHOT_FULL);
-                shot_dwell += 1;
-            }
             if !hide_text {
                 if entries[index].exe_lba == 0 {
-                    // Credits use the full arcade bay while the bank keys stay
-                    // visible below, so this still reads as one front end.
                     paint::text_panel(CARD_X, CRED_Y, CARD_W, CRED_H);
                     credits_cache.draw(CARD_X + 1, CRED_Y + 1);
                     paint::text_panel(CARD_X, LINKS_Y, CARD_W, LINKS_H);
                     links_cache.draw(CARD_X + 1, LINKS_Y + 1);
                 } else {
-                    paint::arcade_cabinet(CAB_X, CAB_Y, CAB_W, CAB_H, beat.pulse, browse_flash);
-                    draw_cabinet_title(&font, entries[index].name_str());
-                    if shot_level > 0 && shot_shown >= 0 {
-                        paint::draw_shot(SHOT_X, SHOT_Y, shot_level as u8);
-                    }
-                    draw_text_block(&font, &text_cache, italian);
-                    paint::arcade_jukebox(JUKE_X, JUKE_Y, JUKE_W, JUKE_H, beat.pulse);
-                    if let Some(header) = header {
-                        draw_music_panel(
-                            &small,
-                            &header,
-                            menu_track_index,
-                            &beat,
-                            muted,
-                            loading,
-                            spectrum_frame(&header, menu_track_index, song_ms, spectrum_frames),
-                        );
-                    }
+                    centred(&small, GAME_SELECT_Y, "GAME SELECT", TITLE);
+                    draw_game_cards(&font, &small, &cards, &entries[..count], index, beat.pulse);
                 }
-                let version = entries[index].version_str();
-                if !version.is_empty() {
-                    let w = 1 + version.len() as i16;
-                    let vx = INFO_X + INFO_W - 4 - w * 5;
-                    let vy = INFO_Y + INFO_H - 11;
-                    small.draw_text(vx, vy, "v", NOW_PLAYING);
-                    small.draw_text(vx + 5, vy, version, TRACK_NAME);
+                paint::arcade_jukebox(JUKE_X, JUKE_Y, JUKE_W, JUKE_H, beat.pulse);
+                if let Some(header) = header {
+                    draw_music_panel(
+                        &small,
+                        &header,
+                        menu_track_index,
+                        &beat,
+                        muted,
+                        loading,
+                        spectrum_frame(&header, menu_track_index, song_ms, spectrum_frames),
+                    );
                 }
-                if italian {
-                    paint::flag_it(320 - paint::FLAG_W - 5, 4);
-                } else {
-                    paint::flag_uk(320 - paint::FLAG_W - 5, 4);
-                }
+                draw_credits_key(&small, entries[index].exe_lba == 0, beat.pulse);
             }
-            draw_bank_keys(&small, &entries[..count], index, beat.pulse, browse_flash);
             if warp >= 0 {
                 paint::arcade_launch_shutter(warp, WARP_FRAMES);
             }
@@ -836,15 +725,6 @@ fn main() {
     }
 }
 
-/// One line inside the text cache, centred on the cache's own width.
-fn cached_line(font: &FontAtlas, line: i16, text: &str, tint: (u8, u8, u8)) {
-    if text.is_empty() {
-        return;
-    }
-    let x = paint::CACHE_W / 2 - (font.text_width(text) as i16) / 2;
-    font.draw_text(x, line * DESC_LEADING + 2, text, tint);
-}
-
 fn centred(font: &FontAtlas, y: i16, text: &str, tint: (u8, u8, u8)) {
     if text.is_empty() {
         return;
@@ -861,22 +741,6 @@ fn wrap(text: &str, max: usize) -> (&str, &str) {
     match text[..max].rfind(' ') {
         Some(at) => (&text[..at], text[at + 1..].trim_start()),
         None => (&text[..max], text[max..].trim_start()),
-    }
-}
-
-/// Split a title at the space nearest its middle, so the two lines on a pill
-/// come out roughly even. Titles with no space stay on one line.
-fn split_title(name: &str) -> (&str, &str) {
-    let middle = name.len() / 2;
-    let mut best: Option<usize> = None;
-    for (at, byte) in name.bytes().enumerate() {
-        if byte == b' ' && best.is_none_or(|b| at.abs_diff(middle) < b.abs_diff(middle)) {
-            best = Some(at);
-        }
-    }
-    match best {
-        Some(at) => (&name[..at], &name[at + 1..]),
-        None => (name, ""),
     }
 }
 
@@ -1060,52 +924,57 @@ fn draw_cd_debug(
     emit(small, &mut y, &buf, n);
 }
 
-fn draw_text_block(font: &FontAtlas, cache: &paint::TextCache, _italian: bool) {
-    paint::arcade_info_panel(INFO_X, INFO_Y, INFO_W, INFO_H);
-    font.draw_text(INFO_X + 7, INFO_Y + 5, "GAME FILE", TITLE);
-    cache.draw(TEXT_X, TEXT_Y);
-}
-
-/// The selected game's name is the cabinet marquee, not a floating menu pill.
-fn draw_cabinet_title(font: &FontAtlas, name: &str) {
-    let (top, bottom) = split_title(name);
-    let line = |y: i16, text: &str| {
-        if !text.is_empty() {
-            let x = CAB_X + CAB_W / 2 - font.text_width(text) as i16 / 2;
-            font.draw_text(x, y, text, LABEL);
-        }
-    };
-    if bottom.is_empty() {
-        line(CAB_Y + 15, top);
-    } else {
-        line(CAB_Y + 7, top);
-        line(CAB_Y + 17, bottom);
-    }
-}
-
-/// Fixed bank labels keep all four destinations visible at once. The three
-/// games read like cabinet buttons; Credits is deliberately the fourth bank.
-fn draw_bank_keys(
+fn draw_game_cards(
     font: &FontAtlas,
+    small: &FontAtlas,
+    cards: &paint::ArcadeCards,
     entries: &[Entry],
     selected: usize,
     pulse: u8,
-    browse_flash: u8,
 ) {
-    for (slot, entry) in entries.iter().enumerate().take(4) {
-        let x = TAB_MARGIN + slot as i16 * (TAB_W + TAB_GAP);
+    for (slot, entry) in entries.iter().enumerate().take(3) {
+        let x = GAME_CARD_X[slot];
         let active = slot == selected;
-        paint::arcade_bank_key(x, TAB_Y, TAB_W, TAB_H, active, pulse, browse_flash);
+        paint::selection_card(x, GAME_CARD_Y, GAME_CARD_W, GAME_CARD_H, active, pulse);
         let label = match entry.name_str() {
             "SPACE INVADERS" => "INVADERS",
             "MAGIKAAAAARP PONG" => "MAGIKARP",
-            CREDITS_NAME => "CREDITS",
             other => other,
         };
         let tint = if active { LABEL } else { FAR_LABEL };
-        let tx = x + TAB_W / 2 - font.text_width(label) as i16 / 2;
-        font.draw_text(tx, TAB_Y + 11, label, tint);
+        let tx = x + GAME_CARD_W / 2 - small.text_width(label) as i16 / 2;
+        small.draw_text(tx, GAME_CARD_Y + 5, label, tint);
+        cards.draw(slot, x + 4, GAME_CARD_Y + 16, if active { 128 } else { 92 });
     }
+
+    let entry = &entries[selected.min(2)];
+    centred(font, SELECTED_TITLE_Y, entry.name_str(), LABEL);
+    let version = entry.version_str();
+    if !version.is_empty() {
+        let width = small.text_width(version) as i16 + 5;
+        let x = 160 - width / 2;
+        small.draw_text(x, SELECTED_VERSION_Y, "v", NOW_PLAYING);
+        small.draw_text(x + 5, SELECTED_VERSION_Y, version, TRACK_NAME);
+    }
+}
+
+fn draw_credits_key(font: &FontAtlas, active: bool, pulse: u8) {
+    paint::credits_key(
+        CREDITS_KEY_X,
+        CREDITS_KEY_Y,
+        CREDITS_KEY_W,
+        CREDITS_KEY_H,
+        active,
+        pulse,
+    );
+    let label = "CREDITS";
+    let x = CREDITS_KEY_X + CREDITS_KEY_W / 2 - font.text_width(label) as i16 / 2;
+    font.draw_text(
+        x,
+        CREDITS_KEY_Y + 11,
+        label,
+        if active { LABEL } else { FAR_LABEL },
+    );
 }
 
 /// One centred line of the credits card's wide box. Coordinates are local
@@ -1234,84 +1103,9 @@ fn draw_music_panel(
     }
 }
 
-/// The selected game's blurb in one language, under the flag of whichever
-/// one it is. Up or down swaps.
-/// Draw a description into the cache. Coordinates are local to it.
-fn render_description(font: &FontAtlas, entry: &Entry, italian: bool) {
-    let text = if italian {
-        entry.desc_it_str()
-    } else {
-        entry.desc_en_str()
-    };
-    // Count the lines first, so a short blurb sits centred in its box the
-    // way the screenshot does in the one beside it.
-    let mut lines = 0i16;
-    let mut rest = text;
-    while !rest.is_empty() && lines < disc_toc::DESC_LINES as i16 {
-        let (_, tail) = wrap(rest, WRAP_CHARS);
-        lines += 1;
-        rest = tail;
-    }
-    let start = (disc_toc::DESC_LINES as i16 - lines) / 2;
-    // Greedy wrap, a line at a time. mkdisc has already checked the text fits
-    // in DESC_LINES of them, so nothing is dropped here.
-    let mut rest = text;
-    for line in 0..lines {
-        let (head, tail) = wrap(rest, WRAP_CHARS);
-        cached_line(font, start + line, head, BLURB);
-        rest = tail;
-    }
-}
-
 /// Read the level-meter data for every menu track. Returns how many frames
 /// landed in the buffer, which is 0 when the disc carries none or when it
 /// carries more than there is room for.
-/// Pull every screenshot on the disc into the RAM cache, while the drive is
-/// still free. Returns how many shots landed; 0 keeps the backdrop off.
-fn read_shots(header: Option<&Header>, entries: &[Entry], count: usize) -> u32 {
-    let Some(header) = header else { return 0 };
-    if header.shots_lba == 0 {
-        return 0;
-    }
-    // The region's extent comes from the entries: shots sit end to end, so
-    // the furthest-reaching claim is the read length.
-    let total = entries[..count]
-        .iter()
-        .map(|e| e.shot_first as u32 + e.shot_count as u32)
-        .max()
-        .unwrap_or(0);
-    if total == 0 || total as usize > disc_toc::MAX_SHOTS {
-        return 0;
-    }
-    // SAFETY: single-threaded, polled; only `main` reaches these statics.
-    let reader = unsafe { &mut *core::ptr::addr_of_mut!(READER) };
-    let buffer = unsafe { &mut *core::ptr::addr_of_mut!(SHOTS) };
-    let sectors = total as usize * disc_toc::SHOT_SECTORS as usize;
-    let mut ok = unsafe { reader.prepare() && reader.start_read(header.shots_lba) };
-    for chunk in buffer.chunks_exact_mut(SECTOR_WORDS).take(sectors) {
-        let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
-        ok = ok && unsafe { reader.read_sector(slot) };
-    }
-    unsafe { reader.stop() };
-    if ok {
-        total
-    } else {
-        tty::println("launcher: screenshot read failed, backdrops off");
-        0
-    }
-}
-
-/// Shot `index` of the RAM cache, as the bytes `paint::upload_shot`
-/// wants. The cache is `u32` for the sector reader's sake; the reinterpret
-/// down to bytes is always aligned.
-fn shot_bytes(index: u8) -> &'static [u8] {
-    // SAFETY: single-threaded; read_shots finished with the buffer at boot.
-    let buffer = unsafe { &*core::ptr::addr_of!(SHOTS) };
-    let words = &buffer[index as usize * SHOT_SLOT_WORDS..];
-    // SAFETY: u32 -> u8 loosens alignment; SHOT_BYTES fits inside a slot.
-    unsafe { core::slice::from_raw_parts(words.as_ptr() as *const u8, disc_toc::SHOT_BYTES) }
-}
-
 fn read_spectrum(header: Option<&Header>) -> u32 {
     let Some(header) = header else { return 0 };
     if header.spectrum_lba == 0 {
