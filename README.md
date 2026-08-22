@@ -1,8 +1,10 @@
 # PSoXide Arcade
 
 PSoXide Arcade is a native PlayStation collection containing Breakout, Space
-Invaders, and Magikarp Pong. The selector and each game are separate PS-X EXE
-programs, so only the selected game occupies runtime memory.
+Invaders, and Magikarp Pong. Its cabinet-style selector keeps all three games
+visible on one CRT, with a dedicated control deck for music and credits. The
+selector and each game are separate PS-X EXE programs, so only the selected
+game occupies runtime memory.
 
 The repository was extracted with filtered history from PSoXide. PSoXide is
 still the pinned engine/SDK dependency; the concrete games and their release
@@ -12,6 +14,7 @@ disc live here.
 
 ```sh
 make disc
+make check
 ```
 
 The standalone mixed-mode image is written to:
@@ -26,9 +29,10 @@ keeping the release pin unchanged.
 
 ## Controls
 
-- Left / Right: choose a game
-- Cross: launch
-- Triangle: switch English / Italian descriptions
+- Left / Right: choose a game or Credits
+- Cross or Start: launch
+- Up / Down: switch English / Italian
+- L1 / R1: previous / next music track, including Music Off
 - In each game: use its title and pause menus
 
 The standalone image owns Magikarp Pong's Goncharov CDDA track. Goncharov is
