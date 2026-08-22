@@ -21,8 +21,13 @@ DISC := $(DIST)/psoxide-arcade.cue
 
 SHOT_NAMES := breakout breakout2 invaders invaders2 pong pong2
 SHOT_FILES := $(foreach name,$(SHOT_NAMES),$(BUILD)/shots/$(name).shot)
+CARD_TEX := $(BUILD)/cards/arcade-cards.tex
+CARD_CLUT := $(BUILD)/cards/arcade-cards.clut
+CARD_PREVIEW := $(BUILD)/cards/arcade-cards.png
+CARD_STAMP := $(BUILD)/cards/.cooked
+CARD_SOURCES := assets/shots/breakout.png assets/shots/invaders.png assets/shots/pong.png
 
-.PHONY: help psoxide loader launcher games mkdisc shots disc check run clean
+.PHONY: help psoxide loader launcher games mkdisc shots cards disc check run clean
 
 help:
 	@echo "make disc   - build the three games and standalone PSoXide Arcade disc"
@@ -42,9 +47,18 @@ loader: psoxide
 		RUSTFLAGS="-Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
 		cargo build $(PSX_FLAGS)
 
-launcher: loader
+$(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
+	@mkdir -p $(BUILD)/cards
+	python3 tools/cook-arcade-cards.py --tex $(CARD_TEX) --clut $(CARD_CLUT) \
+		--preview $(CARD_PREVIEW) $(CARD_SOURCES)
+	@touch $(CARD_STAMP)
+
+cards: $(CARD_STAMP)
+
+launcher: loader cards
 	cd launcher && CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
+		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
 		RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
 
 games: psoxide

@@ -1,38 +1,12 @@
 //! PSoXide Arcade drawing primitives.
 //!
-//! The front end is mostly flat geometry: cabinet, CRT, neon floor, bank keys,
-//! and cached text. Small ellipses give its joystick and buttons a physical
-//! highlight without spending texture memory.
+//! The front end uses a flat cabinet shell, CRT game cards and cached text,
+//! all kept deliberately lean for the PS1 packet envelope.
 
 use psx_gpu::framebuf::FrameBuffer;
 use psx_gpu::material::{BlendMode, TextureMaterial};
 use psx_gpu::{self as gpu};
-use psx_math::{cos_q12, sin_q12};
 use psx_vram::{Clut, Color555, TexDepth, Tpage, VramRect};
-
-/// Most segments an ellipse is drawn with. These are triangle fans, so this is
-/// the polygon count: at twelve the pills read as coarse dodecagons, and at
-/// 320x240 with no antialiasing every facet shows.
-const MAX_SEGMENTS: usize = 9;
-/// Fewest. Below this a cabinet button stops looking circular.
-const MIN_SEGMENTS: usize = 6;
-const TURN: i32 = 1 << 16;
-
-/// Segments worth spending on an ellipse of this size.
-fn segments_for(rx: i16, ry: i16) -> usize {
-    let size = rx.max(ry) as usize;
-    (size / 2).clamp(MIN_SEGMENTS, MAX_SEGMENTS)
-}
-
-fn lerp(a: u8, b: u8, t: u8) -> u8 {
-    let a = a as i32;
-    let b = b as i32;
-    (a + (((b - a) * t as i32) >> 8)) as u8
-}
-
-fn mix(a: (u8, u8, u8), b: (u8, u8, u8), t: u8) -> (u8, u8, u8) {
-    (lerp(a.0, b.0, t), lerp(a.1, b.1, t), lerp(a.2, b.2, t))
-}
 
 fn scale_rgb(c: (u8, u8, u8), t: u8) -> (u8, u8, u8) {
     (
@@ -40,30 +14,6 @@ fn scale_rgb(c: (u8, u8, u8), t: u8) -> (u8, u8, u8) {
         ((c.1 as u32 * t as u32) >> 8) as u8,
         ((c.2 as u32 * t as u32) >> 8) as u8,
     )
-}
-
-fn ellipse(cx: i16, cy: i16, rx: i16, ry: i16, top: (u8, u8, u8), bottom: (u8, u8, u8)) {
-    if rx <= 0 || ry <= 0 {
-        return;
-    }
-    let segments = segments_for(rx, ry);
-    let centre = mix(top, bottom, 128);
-    let vertex = |seg: usize| -> ((i16, i16), (u8, u8, u8)) {
-        let a = ((seg as i32 * TURN) / segments as i32) as u16;
-        let sx = cx as i32 + ((rx as i32 * sin_q12(a)) >> 12);
-        let sy = cy as i32 - ((ry as i32 * cos_q12(a)) >> 12);
-        // cos is +1 at the top of the ellipse, -1 at the bottom.
-        let t = ((4096 - cos_q12(a)) * 255 / 8192) as u8;
-        ((sx as i16, sy as i16), mix(top, bottom, t))
-    };
-
-    let (mut prev_p, mut prev_c) = vertex(0);
-    for seg in 1..=segments {
-        let (p, c) = vertex(seg);
-        gpu::draw_tri_gouraud([(cx, cy), prev_p, p], [centre, prev_c, c]);
-        prev_p = p;
-        prev_c = c;
-    }
 }
 
 const METER_WIDTH: u16 = 3;
@@ -102,11 +52,6 @@ pub fn level_meter_beat(x: i16, base_y: i16, pulse: u8) {
         meter_bar(x + bar * METER_PITCH, base_y, level);
     }
 }
-
-/// Flags are drawn at this size in the top-right corner. Two to one, which is
-/// the Union flag's own ratio; at three to two it read as squat.
-pub const FLAG_W: i16 = 24;
-pub const FLAG_H: i16 = 12;
 
 /// The PSoXide mark, as the one texture on the screen.
 ///
@@ -219,6 +164,71 @@ impl Icons {
     }
 }
 
+/// Three 4bpp game thumbnails packed side by side in one texture page.
+/// Separate CLUTs retain each game's palette while one upload keeps the whole
+/// selector resident for the life of the menu.
+pub struct ArcadeCards {
+    tpage: Tpage,
+    cluts: [Clut; 3],
+    card_w: i16,
+    card_h: i16,
+}
+
+impl ArcadeCards {
+    pub fn upload(
+        pixels: &[u8],
+        palettes: &[u8],
+        card_w: i16,
+        card_h: i16,
+        tpage: Tpage,
+        cluts: [Clut; 3],
+    ) -> Self {
+        let strip_w = card_w * 3;
+        psx_vram::upload_bytes(
+            VramRect::new(
+                tpage.x(),
+                tpage.y(),
+                (strip_w as u16).div_ceil(4),
+                card_h as u16,
+            ),
+            pixels,
+        );
+        for (slot, clut) in cluts.iter().enumerate() {
+            let offset = slot * 16 * 2;
+            let colors: [Color555; 16] = core::array::from_fn(|index| {
+                let at = offset + index * 2;
+                Color555::raw(u16::from_le_bytes([palettes[at], palettes[at + 1]]))
+            });
+            psx_vram::upload_clut(*clut, &colors);
+        }
+        ArcadeCards {
+            tpage,
+            cluts,
+            card_w,
+            card_h,
+        }
+    }
+
+    pub fn draw(&self, slot: usize, x: i16, y: i16, tint: u8) {
+        let slot = slot.min(2);
+        let u0 = (slot as i16 * self.card_w) as u8;
+        let u1 = (slot as i16 * self.card_w + self.card_w - 1) as u8;
+        let v1 = (self.card_h - 1) as u8;
+        gpu::draw_quad_textured(
+            [
+                (x, y),
+                (x + self.card_w, y),
+                (x, y + self.card_h),
+                (x + self.card_w, y + self.card_h),
+            ],
+            [(u0, 0), (u1, 0), (u0, v1), (u1, v1)],
+            self.cluts[slot].uv_clut_word(),
+            self.tpage.uv_tpage_word(0),
+            (tint, tint, tint),
+        );
+    }
+}
+
 /// One step of a fade to black: halve whatever is in the buffer.
 pub fn fade_step() {
     for tri in [
@@ -233,183 +243,136 @@ pub fn fade_step() {
 // PSoXide Arcade cabinet front end
 // ======================================================================
 
-const ARCADE_CYAN: (u8, u8, u8) = (18, 218, 236);
-const ARCADE_MAGENTA: (u8, u8, u8) = (238, 38, 146);
-const ARCADE_VIOLET: (u8, u8, u8) = (70, 20, 104);
-const ARCADE_INK: (u8, u8, u8) = (5, 2, 18);
+// Capcom Arcade Stadium-inspired cabinet palette. The cool shell and dark
+// blue bezel make the red game-select screen read as a separate CRT image.
+const CABINET_LILAC: (u8, u8, u8) = (112, 101, 211);
+const CABINET_LIGHT: (u8, u8, u8) = (164, 151, 238);
+const CABINET_BLUE: (u8, u8, u8) = (24, 18, 112);
+const SELECT_RED: (u8, u8, u8) = (190, 43, 25);
+const SELECT_BLUE: (u8, u8, u8) = (16, 30, 116);
+const SELECT_WHITE: (u8, u8, u8) = (240, 242, 235);
+const SELECT_YELLOW: (u8, u8, u8) = (250, 210, 54);
 
-/// A quiet CRT wall over a perspective neon floor. It is intentionally flat
-/// and architectural: no stars, sphere, ring, or other parent-disc motifs.
-pub fn arcade_backdrop(frame: u32, pulse: u8, attract: bool) {
-    let pulse_lift = pulse / 10;
-    let idle_lift = if attract { 14 } else { 0 };
+/// The collection as one late-era arcade cabinet. The upper red rectangle is
+/// the game-select CRT; the lower blue recess is the control deck carrying
+/// music status and Credits.
+pub fn selection_cabinet(pulse: u8) {
+    let light = scale_rgb(CABINET_LIGHT, 200u8.saturating_add(pulse / 8));
 
-    // CRT scanlines in the cabinet bay.
-    for y in (35..204).step_by(4) {
-        gpu::draw_rect_flat(0, y, 320, 1, 4, 2, 13);
-    }
+    // Cabinet body and monitor bevel.
+    gpu::draw_rect_flat(
+        0,
+        23,
+        320,
+        217,
+        CABINET_LILAC.0,
+        CABINET_LILAC.1,
+        CABINET_LILAC.2,
+    );
+    gpu::draw_rect_flat(0, 23, 320, 3, light.0, light.1, light.2);
+    gpu::draw_rect_flat(
+        14,
+        27,
+        292,
+        151,
+        CABINET_BLUE.0,
+        CABINET_BLUE.1,
+        CABINET_BLUE.2,
+    );
+    gpu::draw_rect_flat(20, 31, 280, 143, 2, 2, 10);
+    gpu::draw_rect_flat(28, 34, 264, 136, SELECT_RED.0, SELECT_RED.1, SELECT_RED.2);
 
-    // A row of chase bulbs makes the whole screen read as a marquee. In
-    // attract mode the chase brightens, but the game information stays put.
-    for bulb in 0..20i16 {
-        let hot = ((bulb as u32 + frame / 4) & 3) == 0;
-        let lift = if hot { 60 + idle_lift } else { 12 };
-        let c = if bulb & 1 == 0 {
-            ARCADE_CYAN
-        } else {
-            ARCADE_MAGENTA
-        };
-        let c = scale_rgb(c, (96u8).saturating_add(lift).saturating_add(pulse_lift));
-        gpu::draw_rect_flat(3 + bulb * 16, 35, 3, 2, c.0, c.1, c.2);
-    }
-
-    // Perspective floor. Five horizontals are enough at 320x240; the tighter
-    // spacing near the horizon does the depth work without a texture.
-    for (y, level) in [(202, 32u8), (208, 42), (216, 58), (226, 76), (238, 100)] {
-        let c = scale_rgb(ARCADE_MAGENTA, level.saturating_add(pulse_lift));
-        gpu::draw_rect_flat(0, y, 320, 1, c.0, c.1, c.2);
-    }
-    for x in (0..=320i16).step_by(32) {
-        let c = scale_rgb(ARCADE_CYAN, 60u8.saturating_add(pulse_lift));
-        gpu::draw_tri_flat([(160, 199), (x, 240), (x + 1, 240)], c.0, c.1, c.2);
-    }
+    // Cabinet control deck, widening toward the player like the reference.
+    gpu::draw_tri_gouraud(
+        [(14, 178), (306, 178), (0, 240)],
+        [CABINET_LIGHT, CABINET_LIGHT, CABINET_BLUE],
+    );
+    gpu::draw_tri_gouraud(
+        [(306, 178), (0, 240), (320, 240)],
+        [CABINET_LIGHT, CABINET_BLUE, CABINET_BLUE],
+    );
+    gpu::draw_rect_flat(
+        22,
+        190,
+        276,
+        44,
+        CABINET_BLUE.0,
+        CABINET_BLUE.1,
+        CABINET_BLUE.2,
+    );
+    gpu::draw_rect_flat(24, 192, 272, 40, 3, 4, 24);
+    gpu::draw_rect_flat(24, 192, 272, 1, light.0, light.1, light.2);
 }
 
-/// The selected game lives in this cabinet. Its screen aperture is fixed at
-/// `(x + 10, y + 38)` so the 120x90 cooked screenshot lands pixel-perfect.
-pub fn arcade_cabinet(x: i16, y: i16, w: i16, h: i16, pulse: u8, browse: u8) {
-    let energy = 112u8.saturating_add(pulse / 5).saturating_add(browse / 4);
-    let cyan = scale_rgb(ARCADE_CYAN, energy);
-    let pink = scale_rgb(ARCADE_MAGENTA, energy);
-
-    // Outer glow and cabinet body.
-    gpu::draw_rect_flat(x, y + 3, w as u16, (h - 6) as u16, cyan.0, cyan.1, cyan.2);
+/// One of the three game cards on the CRT. Selection is the white frame from
+/// the reference; unselected cards stay cobalt, so their screenshots remain
+/// visible without competing with the current game.
+pub fn selection_card(x: i16, y: i16, w: i16, h: i16, active: bool, pulse: u8) {
+    let edge = if active {
+        scale_rgb(SELECT_WHITE, 230u8.saturating_add(pulse / 10))
+    } else {
+        SELECT_BLUE
+    };
+    gpu::draw_rect_flat(x, y, w as u16, h as u16, edge.0, edge.1, edge.2);
+    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, (h - 4) as u16, 5, 8, 44);
     gpu::draw_rect_flat(
-        x + 2,
-        y + 1,
-        (w - 4) as u16,
-        (h - 2) as u16,
-        pink.0,
-        pink.1,
-        pink.2,
+        x + 3,
+        y + 3,
+        (w - 6) as u16,
+        12,
+        SELECT_BLUE.0,
+        SELECT_BLUE.1,
+        SELECT_BLUE.2,
     );
-    gpu::draw_rect_flat(x + 4, y + 3, (w - 8) as u16, (h - 6) as u16, 10, 3, 23);
-
-    // Marquee and its hot lower rail.
-    gpu::draw_rect_flat(x + 7, y + 5, (w - 14) as u16, 28, 38, 5, 52);
-    gpu::draw_rect_flat(x + 7, y + 5, (w - 14) as u16, 2, cyan.0, cyan.1, cyan.2);
-    gpu::draw_rect_flat(x + 7, y + 31, (w - 14) as u16, 2, pink.0, pink.1, pink.2);
-
-    // CRT bezel and black glass. The screenshot draws over the glass.
-    gpu::draw_rect_flat(x + 8, y + 35, 124, 95, 10, 92, 108);
-    gpu::draw_rect_flat(x + 10, y + 37, 120, 92, 0, 0, 0);
-
-    // Control deck projects toward the player.
-    gpu::draw_tri_gouraud(
-        [(x + 8, y + 131), (x + w - 8, y + 131), (x + 15, y + 146)],
-        [(56, 8, 72), (56, 8, 72), (18, 3, 28)],
-    );
-    gpu::draw_tri_gouraud(
-        [
-            (x + w - 8, y + 131),
-            (x + 15, y + 146),
-            (x + w - 15, y + 146),
-        ],
-        [(56, 8, 72), (18, 3, 28), (18, 3, 28)],
-    );
-    gpu::draw_rect_flat(x + 8, y + 131, (w - 16) as u16, 1, pink.0, pink.1, pink.2);
-
-    // Joystick, three action buttons, and coin door.
-    gpu::draw_rect_flat(x + 31, y + 134, 2, 7, 180, 190, 210);
-    ellipse(x + 32, y + 133, 4, 3, ARCADE_CYAN, (4, 70, 88));
-    for (button, color) in [ARCADE_MAGENTA, ARCADE_CYAN, (244, 184, 36)]
-        .iter()
-        .enumerate()
-    {
-        ellipse(
-            x + 91 + button as i16 * 13,
-            y + 138,
-            4,
-            3,
-            *color,
-            scale_rgb(*color, 70),
+    if active {
+        gpu::draw_rect_flat(
+            x + 3,
+            y + h - 8,
+            (w - 6) as u16,
+            5,
+            SELECT_YELLOW.0,
+            SELECT_YELLOW.1,
+            SELECT_YELLOW.2,
         );
     }
-    gpu::draw_rect_flat(x + 14, y + 147, (w - 28) as u16, (h - 152) as u16, 7, 2, 15);
-    for slot in [x + 45, x + w - 49] {
-        gpu::draw_rect_flat(slot, y + 151, 6, 7, 38, 42, 55);
-        gpu::draw_rect_flat(slot + 1, y + 152, 4, 2, pink.0, pink.1, pink.2);
-    }
 }
 
-/// Right-hand game file. A cyan top rail and magenta bottom rail separate it
-/// from the red parent-disc panels even before the text cache is blitted.
-pub fn arcade_info_panel(x: i16, y: i16, w: i16, h: i16) {
-    gpu::draw_rect_flat(
-        x,
-        y,
-        w as u16,
-        h as u16,
-        ARCADE_CYAN.0,
-        ARCADE_CYAN.1,
-        ARCADE_CYAN.2,
-    );
-    gpu::draw_rect_flat(
-        x + 2,
-        y + 2,
-        (w - 4) as u16,
-        (h - 4) as u16,
-        ARCADE_INK.0,
-        ARCADE_INK.1,
-        ARCADE_INK.2,
-    );
-    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, 13, 22, 5, 34);
-    gpu::draw_rect_flat(
-        x + 2,
-        y + h - 3,
-        (w - 4) as u16,
-        1,
-        ARCADE_MAGENTA.0,
-        ARCADE_MAGENTA.1,
-        ARCADE_MAGENTA.2,
-    );
+pub fn credits_key(x: i16, y: i16, w: i16, h: i16, active: bool, pulse: u8) {
+    let edge = if active {
+        scale_rgb(SELECT_WHITE, 225u8.saturating_add(pulse / 10))
+    } else {
+        CABINET_LILAC
+    };
+    gpu::draw_rect_flat(x, y, w as u16, h as u16, edge.0, edge.1, edge.2);
+    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, (h - 4) as u16, 3, 4, 24);
+    if active {
+        gpu::draw_rect_flat(
+            x + 3,
+            y + h - 4,
+            (w - 6) as u16,
+            2,
+            SELECT_YELLOW.0,
+            SELECT_YELLOW.1,
+            SELECT_YELLOW.2,
+        );
+    }
 }
 
 /// Jukebox strip below the game file. The caller writes title and spectrum on
 /// top; the rails pulse gently with the authored beat grid.
 pub fn arcade_jukebox(x: i16, y: i16, w: i16, h: i16, pulse: u8) {
-    let cyan = scale_rgb(ARCADE_CYAN, 150u8.saturating_add(pulse / 3));
-    gpu::draw_rect_flat(x, y, w as u16, h as u16, cyan.0, cyan.1, cyan.2);
-    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, (h - 4) as u16, 7, 2, 16);
-    gpu::draw_rect_flat(x + w - 38, y + 3, 1, (h - 6) as u16, 60, 12, 75);
-}
-
-/// One fixed game-bank key. Active keys lift two pixels and swap from violet
-/// to cyan/pink rails, like an illuminated cabinet button.
-pub fn arcade_bank_key(x: i16, y: i16, w: i16, h: i16, active: bool, pulse: u8, browse: u8) {
-    let lift = if active { 2 } else { 0 };
-    let y = y - lift;
-    let edge = if active {
-        scale_rgb(
-            ARCADE_CYAN,
-            170u8.saturating_add(pulse / 4).saturating_add(browse / 4),
-        )
-    } else {
-        ARCADE_VIOLET
-    };
+    let edge = scale_rgb(CABINET_LIGHT, 178u8.saturating_add(pulse / 5));
     gpu::draw_rect_flat(x, y, w as u16, h as u16, edge.0, edge.1, edge.2);
-    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, (h - 4) as u16, 12, 3, 23);
-    if active {
-        gpu::draw_rect_flat(
-            x + 3,
-            y + 3,
-            (w - 6) as u16,
-            2,
-            ARCADE_MAGENTA.0,
-            ARCADE_MAGENTA.1,
-            ARCADE_MAGENTA.2,
-        );
-    }
+    gpu::draw_rect_flat(x + 2, y + 2, (w - 4) as u16, (h - 4) as u16, 2, 3, 22);
+    gpu::draw_rect_flat(
+        x + w - 38,
+        y + 3,
+        1,
+        (h - 6) as u16,
+        SELECT_BLUE.0,
+        SELECT_BLUE.1,
+        SELECT_BLUE.2,
+    );
 }
 
 /// Arcade launch transition: the CRT's top and bottom shutters close over the
@@ -424,44 +387,20 @@ pub fn arcade_launch_shutter(frame: i32, total: i32) {
             half - 1,
             320,
             1,
-            ARCADE_CYAN.0,
-            ARCADE_CYAN.1,
-            ARCADE_CYAN.2,
+            SELECT_WHITE.0,
+            SELECT_WHITE.1,
+            SELECT_WHITE.2,
         );
         gpu::draw_rect_flat(
             0,
             240 - half,
             320,
             1,
-            ARCADE_MAGENTA.0,
-            ARCADE_MAGENTA.1,
-            ARCADE_MAGENTA.2,
+            SELECT_RED.0,
+            SELECT_RED.1,
+            SELECT_RED.2,
         );
     }
-}
-
-/// The solid black band the mark and the title sit in, with the same border
-/// the text panel uses so the two read as one system.
-pub fn header_strip(h: i16) {
-    gpu::draw_rect_flat(0, 0, 320, h as u16, 0, 0, 0);
-    gpu::draw_rect_flat(
-        0,
-        h - 2,
-        320,
-        1,
-        ARCADE_CYAN.0,
-        ARCADE_CYAN.1,
-        ARCADE_CYAN.2,
-    );
-    gpu::draw_rect_flat(
-        0,
-        h - 1,
-        320,
-        1,
-        ARCADE_MAGENTA.0,
-        ARCADE_MAGENTA.1,
-        ARCADE_MAGENTA.2,
-    );
 }
 
 /// A dark panel to lay text over, with a thin border.
@@ -470,7 +409,7 @@ pub fn header_strip(h: i16) {
 /// whatever it covers rather than hiding it: the ball and the starfield stay
 /// visible underneath, just far enough back for white text to sit on them.
 pub fn text_panel(x: i16, y: i16, w: i16, h: i16) {
-    const BORDER: (u8, u8, u8) = ARCADE_CYAN;
+    const BORDER: (u8, u8, u8) = SELECT_WHITE;
     // Two triangles, since the SDK blends triangles and not rectangles.
     for tri in [
         [(x, y), (x + w, y), (x, y + h)],
@@ -484,70 +423,6 @@ pub fn text_panel(x: i16, y: i16, w: i16, h: i16) {
     gpu::draw_rect_flat(x, y + h - 1, w as u16, 1, BORDER.0, BORDER.1, BORDER.2);
     gpu::draw_rect_flat(x, y, 1, h as u16, BORDER.0, BORDER.1, BORDER.2);
     gpu::draw_rect_flat(x + w - 1, y, 1, h as u16, BORDER.0, BORDER.1, BORDER.2);
-}
-
-/// The Union flag.
-///
-/// Drawn a row at a time rather than as two big parallelograms. At 24x12 the
-/// saltire steps exactly two across for one down, corner to corner, and
-/// stepping it by hand gets that; handing the GPU a parallelogram lets its
-/// own edge rules pick the steps, which came out ragged and uneven.
-///
-/// Proportions follow the real flag where they fit: the cross of St George is
-/// a fifth of the height in red with a pixel of white either side. The arms of
-/// the saltire are a pixel wider than geometry wants, because at twelve pixels
-/// tall a true-width diagonal disappears.
-///
-/// The counterchange is real: St Patrick's red sits below the white diagonal
-/// on the hoist and above it on the fly, which is the asymmetry the flag is
-/// recognised by and the first thing an eyeballed version loses.
-pub fn flag_uk(x: i16, y: i16) {
-    const BLUE: (u8, u8, u8) = (8, 24, 92);
-    const WHITE: (u8, u8, u8) = (238, 238, 242);
-    const RED: (u8, u8, u8) = (184, 16, 36);
-    let (w, h) = (FLAG_W, FLAG_H);
-
-    gpu::draw_rect_flat(x, y, w as u16, h as u16, BLUE.0, BLUE.1, BLUE.2);
-
-    // A horizontal run of one row, clipped to the flag.
-    let run = |from: i16, len: i16, row: i16, c: (u8, u8, u8)| {
-        let start = from.max(0);
-        let end = (from + len).min(w);
-        if end > start {
-            gpu::draw_rect_flat(x + start, y + row, (end - start) as u16, 1, c.0, c.1, c.2);
-        }
-    };
-
-    for row in 0..h {
-        // Two across for one down, both ways.
-        let down = row * 2;
-        let up = w - 2 - down;
-        run(down - 1, 4, row, WHITE);
-        run(up - 1, 4, row, WHITE);
-
-        // St Patrick, offset within the white. Hoist half low, fly half high,
-        // which is what counterchanged means here.
-        let hoist = row < h / 2;
-        let down_red = if hoist { down + 1 } else { down - 1 };
-        let up_red = if hoist { up - 1 } else { up + 1 };
-        run(down_red, 2, row, RED);
-        run(up_red, 2, row, RED);
-    }
-
-    // Cross of St George over the top, white-bordered.
-    gpu::draw_rect_flat(x, y + 4, w as u16, 4, WHITE.0, WHITE.1, WHITE.2);
-    gpu::draw_rect_flat(x + 10, y, 4, h as u16, WHITE.0, WHITE.1, WHITE.2);
-    gpu::draw_rect_flat(x, y + 5, w as u16, 2, RED.0, RED.1, RED.2);
-    gpu::draw_rect_flat(x + 11, y, 2, h as u16, RED.0, RED.1, RED.2);
-}
-
-/// The Italian tricolour.
-pub fn flag_it(x: i16, y: i16) {
-    let third = (FLAG_W / 3) as u16;
-    let h = FLAG_H as u16;
-    gpu::draw_rect_flat(x, y, third, h, 0, 140, 69);
-    gpu::draw_rect_flat(x + third as i16, y, third, h, 240, 240, 240);
-    gpu::draw_rect_flat(x + 2 * third as i16, y, third, h, 205, 33, 42);
 }
 
 /// A block of text rendered once into spare VRAM and then blitted.
@@ -575,15 +450,7 @@ pub struct TextCache {
 /// boundary the way the old full-width block did.
 const CACHE_X: u16 = 512;
 const CACHE_Y: u16 = 0;
-pub const CACHE_W: i16 = 115;
-pub const CACHE_H: i16 = 92;
-
 impl TextCache {
-    /// A cache holding nothing. Any key re-renders it.
-    pub const fn new() -> Self {
-        Self::at(CACHE_Y, CACHE_W, CACHE_H)
-    }
-
     /// A second cache further down the same page. `y` is a texture V, so it
     /// has to stay inside a byte.
     pub const fn at(y: u16, w: i16, h: i16) -> Self {
@@ -593,11 +460,6 @@ impl TextCache {
             w,
             h,
         }
-    }
-
-    /// Whether `key` is already rendered.
-    pub fn holds(&self, key: u32) -> bool {
-        self.key == key
     }
 
     /// Point the GPU at the off-screen rect and clear it to black. Black
@@ -642,72 +504,4 @@ impl TextCache {
             TextureMaterial::opaque(0, tpage.uv_tpage_word(0), (128, 128, 128)),
         );
     }
-}
-
-// ======================================================================
-// The screenshot beside the description
-// ======================================================================
-
-/// Where the selected game's screenshot sits in VRAM: one 8bpp 120x90
-/// frame at (512,256), 60x90 halfwords -- clear of both framebuffers,
-/// every font page, the text cache above it and its CLUT rows below it.
-const SHOT_TPAGE: Tpage = Tpage::new(512, 256, TexDepth::Bit8);
-/// TWO CLUT rows, ping-ponged per upload. The GPU's 240-entry CLUT cache
-/// line (8bpp colors 16-255) reloads only when a primitive's clut WORD
-/// changes; rewriting the data under a constant clut address left every
-/// shot after the first wearing the first shot's palette on real hardware
-/// (console footage 2026-08-07, reproduced in PSoXide once the per-line
-/// cache landed). Alternating rows makes the word change with the data.
-const SHOT_CLUTS: [Clut; 2] = [Clut::new(512, 508), Clut::new(512, 509)];
-/// Which of the two rows holds the CURRENT image's palette. MIPS-I has no
-/// atomics and this hardware is single threaded; a static mut behind raw
-/// pointer accessors is the whole synchronisation story.
-static mut SHOT_CLUT_BANK: usize = 0;
-
-fn shot_clut_bank() -> usize {
-    unsafe { core::ptr::read(&raw const SHOT_CLUT_BANK) }
-}
-
-fn set_shot_clut_bank(bank: usize) {
-    unsafe { core::ptr::write(&raw mut SHOT_CLUT_BANK, bank) }
-}
-const SHOT_RECT: VramRect = VramRect::new(
-    512,
-    256,
-    (disc_toc::SHOT_W / 2) as u16,
-    disc_toc::SHOT_H as u16,
-);
-
-/// Send one cooked shot (CLUT then pixels, `disc_toc::SHOT_BYTES` of it)
-/// into the screenshot's VRAM slot. Only call while the shot is faded to
-/// black: there is a single slot, and swapping it mid-view would tear.
-pub fn upload_shot(shot: &[u8]) {
-    let clut = &shot[..disc_toc::SHOT_CLUT_BYTES];
-    let pixels = &shot[disc_toc::SHOT_CLUT_BYTES..disc_toc::SHOT_BYTES];
-    let bank = shot_clut_bank() ^ 1;
-    let target = SHOT_CLUTS[bank];
-    psx_vram::upload_bytes(VramRect::new(target.x(), target.y(), 256, 1), clut);
-    psx_vram::upload_bytes(SHOT_RECT, pixels);
-    set_shot_clut_bank(bank);
-}
-
-/// The screenshot itself, with its top-left at `x, y`, faded up through
-/// `level` (128 is full brightness). A sprite rather than a quad: a sprite
-/// steps one texel per pixel from its start, which keeps the frame
-/// pixel-exact instead of trusting interpolated UVs. Its box supplies the
-/// border, so the image draws bare.
-pub fn draw_shot(x: i16, y: i16, level: u8) {
-    let clut = SHOT_CLUTS[shot_clut_bank()];
-    gpu::draw_sprite_material(
-        x,
-        y,
-        disc_toc::SHOT_W as u16,
-        disc_toc::SHOT_H as u16,
-        (0, 0),
-        TextureMaterial::opaque(
-            clut.uv_clut_word(),
-            SHOT_TPAGE.uv_tpage_word(0),
-            (level, level, level),
-        ),
-    );
 }
