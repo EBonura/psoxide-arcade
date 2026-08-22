@@ -12,7 +12,9 @@ the flyby source.
 
 `../assets/goncharov_spectrum_16x30hz.bin` is a baked 16-band,
 30 Hz spectrum visualizer table generated from `assets/audio/cdda/GONCHAROV.wav`
-with `make magikaaaaaarp-pong-spectrum`.
+with `make magikaaaaaarp-pong-spectrum`. Goncharov is by
+[magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used with
+the band's permission.
 
 The mixed-mode disc uses `assets/audio/cdda/GONCHAROV.track02.cdda`,
 shared with the CD-DA streaming demo.
