@@ -31,9 +31,10 @@ keeping the release pin unchanged.
 - Triangle: switch English / Italian descriptions
 - In each game: use its title and pause menus
 
-The standalone image owns Magikarp Pong's Goncharov CDDA track. On the full
-PSoXide Demo Disc, GH-PSX is intentionally pointed at that same physical
-track.
+The standalone image owns Magikarp Pong's Goncharov CDDA track. Goncharov is
+by [magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used
+with the band's permission. On the full PSoXide Demo Disc, GH-PSX is
+intentionally pointed at that same physical track.
 
 ## Hardware status
 
@@ -41,4 +42,3 @@ The chain-loader and CDDA relocation are inherited from the hardware-proven
 demo-disc path, but the new nested route still needs one owner-console burn:
 selector, all three launches, Magikarp audio, GH-PSX borrowing, and reset back
 to the outer menu.
-
