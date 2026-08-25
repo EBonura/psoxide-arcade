@@ -93,7 +93,7 @@ disc: launcher games mkdisc shots
 		--version-of "MAGIKAAAAARP PONG=0.1.0" \
 		--describe "BREAKOUT=A complete Breakout clone with responsive controls, collision, sound, scoring and a persistent high score.|Un clone completo di Breakout con controlli reattivi, collisioni, audio, punti e record persistente." \
 		--describe "SPACE INVADERS=A complete Space Invaders clone with marching formations, shields, enemy fire, scoring and three difficulty levels.|Un clone completo di Space Invaders con formazioni, scudi, fuoco nemico, punti e tre livelli di difficolta." \
-		--describe "MAGIKAAAAARP PONG=Pong with live CD audio and spectrum bars. Goncharov by magikAAAAArp, used with permission from the band.|Pong con audio CD e barre dello spettro. Goncharov dei magikAAAAArp, usato con il loro permesso."
+		--describe "MAGIKAAAAARP PONG=Pong with live CD audio and spectrum bars. Goncharov by magikAAAAArp.|Pong con audio CD e barre dello spettro. Goncharov dei magikAAAAArp."
 
 check: psoxide
 	cd disc-toc && cargo test
