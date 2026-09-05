@@ -6,16 +6,32 @@ visible on one CRT, with a dedicated control deck for music and credits. The
 selector and each game are separate PS-X EXE programs, so only the selected
 game occupies runtime memory.
 
-The repository was extracted with filtered history from PSoXide. PSoXide is
-still the pinned engine/SDK dependency; the concrete games and their release
-disc live here.
+The repository was extracted with filtered history from PSoXide. The
+[SDK](https://github.com/EBonura/PSoXide) and
+[engine](https://github.com/EBonura/PSoXide-editor/tree/main/engine) now have
+separate owners; the concrete games and their collection release live here.
+The standalone `psoxide-pin/` retains a reproducible historical dependency,
+while the demo disc explicitly supplies its tested split components.
 
 ## Build
 
+Install Rust through rustup, Make, Python 3 with Pillow, host C/C++ build
+tools and `mipsel-none-elf-objdump` on `PATH`. The checked-in toolchain selects
+the nightly and Rust components. Access to this repository is required while
+it remains private.
+
 ```sh
+git clone https://github.com/EBonura/psoxide-arcade.git
+cd psoxide-arcade
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install Pillow
 make disc
 make check
 ```
+
+`make disc` hydrates the pinned SDK/engine into ignored `.psoxide/`, builds all
+five guest executables, checks instruction hazards and packs the collection.
 
 The standalone mixed-mode image is written to:
 
@@ -24,8 +40,18 @@ dist/psoxide-arcade.cue
 dist/psoxide-arcade.bin
 ```
 
-Use `PSOXIDE_FROM=/path/to/PSoXide` to build against a local checkout while
-keeping the release pin unchanged.
+Keep both files together and open the CUE in a PlayStation emulator. To use
+the separate PSoXide emulator:
+
+```sh
+/path/to/PSoXide-emulator/target/release/frontend launch --path dist/psoxide-arcade.cue
+```
+
+Use `PSOXIDE_FROM=/path/to/PSoXide-editor` with an already bootstrapped editor
+checkout to build against split SDK/engine sources while keeping the standalone
+pin unchanged. The legacy `make run` target builds the frontend from the
+historical hydrated source; the explicit command above also works with split
+source overrides.
 
 ## Controls
 
