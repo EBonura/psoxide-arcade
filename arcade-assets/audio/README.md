@@ -1,6 +1,6 @@
 # Goncharov CDDA
 
-`goncharov.cdda` is the canonical raw 44.1 kHz stereo track used by
+`goncharov.cdda` is the shared raw 44.1 kHz stereo track used by
 Magikarp Pong. Goncharov is by
 [magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used with
 the band's permission. PSoXide Arcade owns the one physical copy on the demo
