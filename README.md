@@ -1,5 +1,9 @@
 # PSoXide Arcade
 
+Start with the [PSoXide Demo Disc](https://bonnie-studios.itch.io/psoxide-demo-disc): it includes PSoXide Arcade
+and the other Bonnie Studios PlayStation demos. Standalone downloads are available
+for testing just this collection.
+
 PSoXide Arcade is a native PlayStation collection containing Breakout, Space
 Invaders, and Magikarp Pong. Its cabinet-style selector keeps all three games
 visible on one CRT, with a dedicated control deck for music and credits. The
@@ -9,7 +13,7 @@ game occupies runtime memory.
 The repository was extracted with filtered history from PSoXide. The
 [SDK](https://github.com/EBonura/PSoXide) and
 [engine](https://github.com/EBonura/PSoXide-editor/tree/main/engine) now have
-separate owners; the concrete games and their collection release live here.
+separate repositories; the three games and their collection release live here.
 The standalone `psoxide-pin/` retains a reproducible historical dependency,
 while the demo disc explicitly supplies its tested split components.
 
@@ -72,3 +76,8 @@ The chain-loader and CDDA relocation are inherited from the hardware-proven
 demo-disc path, but the new nested route still needs one owner-console burn:
 selector, all three launches, Magikarp audio, GH-PSX borrowing, and reset back
 to the outer menu.
+
+## Recent changes
+
+Source snapshot **2026.09.05**: Documented the separate SDK/engine dependencies and collection build.
+See the [changelog](CHANGELOG.md) for the remaining changes and published download versions.
