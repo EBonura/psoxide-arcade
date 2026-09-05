@@ -368,7 +368,6 @@ fn main() {
     // silicon burn: tracks double-advance and chain-loads fail red, and the
     // emulator reproduces neither, so the console screen is the debugger.
     let mut debug = false;
-    let mut last_stat: u8 = 0xEE; // 0xEE = no reading yet, 0xDD = timeout
     let mut stat_hist = [0xEEu8; 10]; // newest first
     let mut stat_timeouts: u16 = 0;
     let mut adv_idle: u16 = 0;
@@ -480,7 +479,7 @@ fn main() {
             if music.started() && tick.wrapping_sub(next_music_poll) < u32::MAX / 2 {
                 next_music_poll = tick.wrapping_add(CDDA_POLL_TICKS);
                 let status = cdrom::try_get_stat(CDDA_SPINS);
-                last_stat = match &status {
+                let last_stat = match &status {
                     Some(r) => r.bytes().first().copied().unwrap_or(0xEF),
                     None => {
                         stat_timeouts = stat_timeouts.saturating_add(1);
@@ -813,7 +812,7 @@ fn draw_cd_debug(
     // the spot now that the panel spans the band above it too.
     let mut y = 102;
     let mut buf = [0u8; 56];
-    let mut emit = |small: &FontAtlas, y: &mut i16, buf: &[u8], n: usize| {
+    let emit = |small: &FontAtlas, y: &mut i16, buf: &[u8], n: usize| {
         // SAFETY: every byte written above is ASCII.
         small.draw_text(
             x,
@@ -863,7 +862,7 @@ fn draw_cd_debug(
     // Where the drive says its head is (GetlocP), and where the watchdog
     // thinks the song is against its known length. "POS ?" until the
     // first successful position read.
-    let mut put_msf = |buf: &mut [u8; 56], at: usize, m: u8, s: u8, f: u8| {
+    let put_msf = |buf: &mut [u8; 56], at: usize, m: u8, s: u8, f: u8| {
         let mut n = put_dec(buf, at, m as u32);
         buf[n] = b':';
         n = put_dec(buf, n + 1, s as u32);

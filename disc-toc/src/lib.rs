@@ -406,7 +406,8 @@ pub fn decode(sector: &[u8; TOC_BYTES], into: &mut [Entry; MAX_ENTRIES]) -> Opti
     }
     let mut credit = [0u8; CREDIT_BYTES];
     credit.copy_from_slice(&sector[CREDIT_AT..CREDIT_AT + CREDIT_BYTES]);
-    let word = |a: usize| u32::from_le_bytes([sector[a], sector[a + 1], sector[a + 2], sector[a + 3]]);
+    let word =
+        |a: usize| u32::from_le_bytes([sector[a], sector[a + 1], sector[a + 2], sector[a + 3]]);
     let mut spectrum_frames = [0u32; MAX_MENU_TRACKS];
     for (i, slot) in spectrum_frames.iter_mut().enumerate() {
         *slot = word(SPECTRUM_FRAMES_AT + i * 4);
@@ -447,7 +448,8 @@ pub fn decode(sector: &[u8; TOC_BYTES], into: &mut [Entry; MAX_ENTRIES]) -> Opti
         slot.payload_fnv = word(n + 12);
         let d = n + 16;
         slot.desc_en.copy_from_slice(&sector[d..d + DESC_BYTES]);
-        slot.desc_it.copy_from_slice(&sector[d + DESC_BYTES..d + 2 * DESC_BYTES]);
+        slot.desc_it
+            .copy_from_slice(&sector[d + DESC_BYTES..d + 2 * DESC_BYTES]);
         let v = d + 2 * DESC_BYTES;
         slot.version.copy_from_slice(&sector[v..v + VERSION_BYTES]);
         slot.flags = word(v + VERSION_BYTES);
@@ -500,7 +502,11 @@ mod tests {
         assert_eq!(header.title(1), "RUSTED HAMMER");
         assert_eq!(header.title(2), "", "unnamed track");
         assert_eq!(header.spectrum_lba, 700);
-        assert_eq!(header.spectrum_span(0), Some((0, 4590)), "first is at the start");
+        assert_eq!(
+            header.spectrum_span(0),
+            Some((0, 4590)),
+            "first is at the start"
+        );
         assert_eq!(
             header.spectrum_span(1),
             Some((4590, 7260)),
@@ -537,7 +543,8 @@ mod tests {
 
     #[test]
     fn rejects_a_sector_that_is_not_a_toc() {
-        let mut sector = encode(&[Entry::new("X", 1, 0, 0)], 0, 0, "", &[], &[], 0, &[], 0).expect("fits");
+        let mut sector =
+            encode(&[Entry::new("X", 1, 0, 0)], 0, 0, "", &[], &[], 0, &[], 0).expect("fits");
         sector[0] ^= 0xFF;
         assert_eq!(decode(&sector, &mut blank()), None);
     }
