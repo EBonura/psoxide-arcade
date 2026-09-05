@@ -92,7 +92,10 @@ pub fn parse(path: &Path) -> Result<Sheet, String> {
                         in_audio_track = false;
                     }
                     other => {
-                        return Err(format!("{}: unsupported TRACK type {other:?}", path.display()))
+                        return Err(format!(
+                            "{}: unsupported TRACK type {other:?}",
+                            path.display()
+                        ))
                     }
                 }
             }
@@ -126,7 +129,10 @@ pub fn parse(path: &Path) -> Result<Sheet, String> {
     }
     for track in &mut audio {
         if track.index01 == u32::MAX {
-            return Err(format!("{}: an audio track has no INDEX 01", path.display()));
+            return Err(format!(
+                "{}: an audio track has no INDEX 01",
+                path.display()
+            ));
         }
         // A track without a pregap starts where it plays.
         if track.index00 == u32::MAX {
@@ -185,7 +191,13 @@ mod tests {
         let sheet = parse(&path).expect("parses");
         assert_eq!(sheet.data_frames, 10 * 75);
         assert_eq!(sheet.audio.len(), 2);
-        assert_eq!(sheet.audio[0], AudioTrack { index00: 0, index01: 150 });
+        assert_eq!(
+            sheet.audio[0],
+            AudioTrack {
+                index00: 0,
+                index01: 150
+            }
+        );
         assert_eq!(
             sheet.audio[1],
             AudioTrack {
@@ -219,7 +231,13 @@ mod tests {
             1000,
         );
         let sheet = parse(&path).expect("parses");
-        assert_eq!(sheet.audio[0], AudioTrack { index00: 0, index01: 0 });
+        assert_eq!(
+            sheet.audio[0],
+            AudioTrack {
+                index00: 0,
+                index01: 0
+            }
+        );
     }
 
     #[test]

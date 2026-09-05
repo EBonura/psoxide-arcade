@@ -228,7 +228,10 @@ mod tests {
         assert_eq!(out[3], 0, "quietest frame sits at the bottom");
         assert_eq!(out[(count - 1) * BANDS + 3], 255, "loudest pins the top");
         let middle = out[(count / 2) * BANDS + 3];
-        assert!((100..=155).contains(&middle), "middle sits mid-meter: {middle}");
+        assert!(
+            (100..=155).contains(&middle),
+            "middle sits mid-meter: {middle}"
+        );
     }
 
     #[test]

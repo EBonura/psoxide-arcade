@@ -51,7 +51,9 @@ const EXE_MAGIC: [u32; 2] = [0x582D_5350, 0x4558_4520]; // "PS-X EXE"
 /// the header LBA, MAGIC the first header word, BOUNDS the load address,
 /// PAYLOAD the failing sector index, VERIFY the FNV the RAM actually
 /// hashed to. Stage 8 is the panic handler.
-const STAGE_NAMES: [&str; 7] = ["DRIVE", "SEEK", "HEADER", "MAGIC", "BOUNDS", "PAYLOAD", "VERIFY"];
+const STAGE_NAMES: [&str; 7] = [
+    "DRIVE", "SEEK", "HEADER", "MAGIC", "BOUNDS", "PAYLOAD", "VERIFY",
+];
 const STAGE_PANIC: u32 = 8;
 
 /// Checklist geometry: stage names down the left at 2x scale, OK / FAIL
@@ -200,7 +202,13 @@ fn row_y(row: usize) -> i16 {
 fn draw_checklist(attempt: u32) {
     paint::rect(0, 0, 320, LOG_Y, paint::RED_BASE);
     paint::text(LIST_X, 8, 2, "CHAIN LOADER", paint::WHITE);
-    paint::text_bytes(232, 8, 2, &[b'T', b'R', b'Y', b' ', b'1' + attempt as u8], paint::DIM);
+    paint::text_bytes(
+        232,
+        8,
+        2,
+        &[b'T', b'R', b'Y', b' ', b'1' + attempt as u8],
+        paint::DIM,
+    );
     for (row, name) in STAGE_NAMES.iter().enumerate() {
         paint::text(LIST_X, row_y(row), 2, name, paint::DIM);
     }
@@ -417,20 +425,20 @@ unsafe fn quiesce() {
         psx_io::write16(0x1F80_1D8E, 0x00FF); // KEY_OFF hi
         psx_io::write16(0x1F80_1D80, 0); // main volume L
         psx_io::write16(0x1F80_1D82, 0); // main volume R
-        // Mask + acknowledge every interrupt source.
+                                         // Mask + acknowledge every interrupt source.
         psx_io::write32(0x1F80_1074, 0); // I_MASK
         psx_io::write32(0x1F80_1070, 0); // I_STAT
-        // Disable every DMA channel but keep the BIOS's priority ladder.
-        // The third debug burn proved silicon cares about the difference:
-        // with DPCR fully zeroed, re-enabling channel 3 alone (enable bit,
-        // priority nibble 0) left the CD DMA transferring nothing, and
-        // every chain-loaded header arrived as all zeros with no drive
-        // error. Standalone programs inherit 0x07654321 from the BIOS and
-        // the identical reader code works there; hand the next program
-        // the same baseline. (The emulator does not model priorities, so
-        // only a burn could catch this.)
+                                         // Disable every DMA channel but keep the BIOS's priority ladder.
+                                         // The third debug burn proved silicon cares about the difference:
+                                         // with DPCR fully zeroed, re-enabling channel 3 alone (enable bit,
+                                         // priority nibble 0) left the CD DMA transferring nothing, and
+                                         // every chain-loaded header arrived as all zeros with no drive
+                                         // error. Standalone programs inherit 0x07654321 from the BIOS and
+                                         // the identical reader code works there; hand the next program
+                                         // the same baseline. (The emulator does not model priorities, so
+                                         // only a burn could catch this.)
         psx_io::write32(0x1F80_10F0, 0x0765_4321); // DPCR
-        // GP1(00h): reset the GPU (display off, FIFO cleared, defaults).
+                                                   // GP1(00h): reset the GPU (display off, FIFO cleared, defaults).
         psx_io::write32(0x1F80_1814, 0);
     }
     // Clear cop0 SR.IEc (bit 0) so no interrupt fires between here and the
@@ -550,11 +558,15 @@ extern "C" {
 unsafe fn enter(pc0: u32, gp0: u32, sp: u32, lba_offset: u32, cdda_track_base: u32) -> ! {
     unsafe {
         core::arch::asm!(
+            // LLVM may assign an input to $at; none of these instructions needs assembler scratch.
+            ".set push",
+            ".set noat",
             "move $28, {gp}",
             "move $29, {sp}",
             "move $30, $0",
             "jr   {pc}",
             "nop",
+            ".set pop",
             gp = in(reg) gp0,
             sp = in(reg) sp,
             pc = in(reg) pc0,

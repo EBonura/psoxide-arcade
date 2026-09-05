@@ -169,8 +169,8 @@ pub fn sphere(yaw: i32, pitch: i32, swell: i32, out: &mut [Bead; SPHERE_POINTS])
         let ring = (radius * sin_q12(phi)) >> 12;
         for lon in 0..SPHERE_LON {
             // Offset alternate rings so the beads sit in each other's gaps.
-            let theta = (((lon as i32 * 2 + (lat & 1) as i32) * TURN)
-                / (SPHERE_LON as i32 * 2)) as u16;
+            let theta =
+                (((lon as i32 * 2 + (lat & 1) as i32) * TURN) / (SPHERE_LON as i32 * 2)) as u16;
             emit(
                 (ring * sin_q12(theta)) >> 12,
                 y,
@@ -442,8 +442,16 @@ mod tests {
                 if !s.visible {
                     continue;
                 }
-                assert!((0..320).contains(&s.x), "star {i} travel {travel} x={}", s.x);
-                assert!((0..240).contains(&s.y), "star {i} travel {travel} y={}", s.y);
+                assert!(
+                    (0..320).contains(&s.x),
+                    "star {i} travel {travel} x={}",
+                    s.x
+                );
+                assert!(
+                    (0..240).contains(&s.y),
+                    "star {i} travel {travel} y={}",
+                    s.y
+                );
             }
         }
     }
@@ -600,8 +608,6 @@ mod tests {
         assert!(bottom > top);
     }
 }
-
-
 
 #[cfg(test)]
 mod field_density {
