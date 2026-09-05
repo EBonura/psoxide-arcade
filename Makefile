@@ -10,7 +10,7 @@ MKDISC := $(ROOT)/tools/mkdisc/target/release/mkdisc
 
 PSX_TARGET := mipsel-sony-psx
 PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem
-LINK_FLAGS := -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
+LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
 
 LOADER_BLOB := $(OUT)/loader.exe
 LAUNCHER_EXE := $(OUT)/launcher.exe
@@ -44,7 +44,7 @@ psoxide:
 
 loader: psoxide
 	cd loader && CARGO_TARGET_DIR=$(GUEST_BUILD) \
-		RUSTFLAGS="-Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
+		RUSTFLAGS="-Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
 		cargo build $(PSX_FLAGS)
 
 $(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
@@ -76,6 +76,7 @@ $(BUILD)/shots/%.shot: assets/shots/%.png tools/cook-shots.py
 shots: $(SHOT_FILES)
 
 disc: launcher games mkdisc shots
+	@for exe in $(LOADER_BLOB) $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do python3 $(PSOXIDE)/tools/hazard_scan.py "$$exe" || exit 1; done
 	@mkdir -p $(DIST)
 	$(MKDISC) --launcher $(LAUNCHER_EXE) --out $(DIST)/psoxide-arcade.bin --volume PSXARCADE \
 		--game "BREAKOUT=$(BREAKOUT_EXE)" \
