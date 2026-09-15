@@ -81,3 +81,10 @@ to the outer menu.
 
 Source snapshot **2026.09.05**: Documented the separate SDK/engine dependencies and collection build.
 See the [changelog](CHANGELOG.md) for the remaining changes and published download versions.
+
+## PSoXide source components
+
+`components.lock.json` pins the SDK, engine/editor and emulator libraries separately.
+`make psoxide` verifies and materializes them into the ignored `.psoxide` directory.
+The demo disc can pass `PSOXIDE_FROM` with a verified composite editor checkout.
+Pass `FRONTEND=/path/to/PSoXide-emulator/target/release/frontend` to player helpers.
