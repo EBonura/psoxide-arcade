@@ -1,6 +1,7 @@
 ROOT := $(CURDIR)
 VERSION := 0.1.0
 PSOXIDE := $(ROOT)/.psoxide
+FRONTEND ?= frontend
 PSOXIDE_FROM ?=
 BUILD := $(ROOT)/build
 GUEST_BUILD := $(BUILD)/guest
@@ -39,7 +40,7 @@ psoxide:
 		cargo run -q --manifest-path "$(PSOXIDE_FROM)/tools/psoxide-link/Cargo.toml" -- \
 			--from "$(PSOXIDE_FROM)" --into "$(PSOXIDE)"; \
 	else \
-		cargo run -q --manifest-path "$(ROOT)/psoxide-pin/Cargo.toml" -- "$(PSOXIDE)"; \
+		python3 $(ROOT)/tools/bootstrap-components.py --root $(PSOXIDE) --lock $(ROOT)/components.lock.json; \
 	fi
 
 loader: psoxide
@@ -103,7 +104,7 @@ check: psoxide
 	$(MAKE) disc
 
 run: disc
-	cd $(PSOXIDE)/emu && cargo run -p frontend --release -- launch --path $(DISC)
+	"$(FRONTEND)" launch --path $(DISC)
 
 clean:
 	rm -rf $(BUILD) $(DIST)
