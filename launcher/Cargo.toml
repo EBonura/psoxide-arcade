@@ -33,9 +33,9 @@ psx-pad  = { path = "../.psoxide/sdk/crates/psx-pad" }
 psx-rt   = { path = "../.psoxide/sdk/crates/psx-rt" }
 psx-vram = { path = "../.psoxide/sdk/crates/psx-vram" }
 psx-math = { path = "../.psoxide/sdk/crates/psx-math" }
-carousel = { path = "../carousel" }
+carousel = { package = "psx-carousel", path = "../.psoxide/engine/crates/psx-carousel" }
 psx-io   = { path = "../.psoxide/sdk/crates/psx-io" }
 psx-spu  = { path = "../.psoxide/sdk/crates/psx-spu" }
 psx-asset = { path = "../.psoxide/sdk/crates/psx-asset" }
 psx-sfx  = { path = "../.psoxide/sdk/crates/psx-sfx" }
-disc-toc = { path = "../disc-toc" }
+disc-toc = { package = "psx-disc-toc", path = "../.psoxide/engine/crates/psx-disc-toc" }

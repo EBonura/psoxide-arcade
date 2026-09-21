@@ -11,5 +11,5 @@ name = "mkdisc"
 path = "src/main.rs"
 
 [dependencies]
-disc-toc = { path = "../../disc-toc" }
+disc-toc = { package = "psx-disc-toc", path = "../../.psoxide/engine/crates/psx-disc-toc" }
 psx-iso  = { path = "../../.psoxide/crates/psx-iso" }

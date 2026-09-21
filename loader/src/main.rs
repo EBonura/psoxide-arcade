@@ -426,20 +426,20 @@ unsafe fn quiesce() {
         psx_io::write16(0x1F80_1D80, 0); // main volume L
         psx_io::write16(0x1F80_1D82, 0); // main volume R
                                          // Mask + acknowledge every interrupt source.
-        psx_io::write32(0x1F80_1074, 0); // I_MASK
-        psx_io::write32(0x1F80_1070, 0); // I_STAT
-                                         // Disable every DMA channel but keep the BIOS's priority ladder.
-                                         // The third debug burn proved silicon cares about the difference:
-                                         // with DPCR fully zeroed, re-enabling channel 3 alone (enable bit,
-                                         // priority nibble 0) left the CD DMA transferring nothing, and
-                                         // every chain-loaded header arrived as all zeros with no drive
-                                         // error. Standalone programs inherit 0x07654321 from the BIOS and
-                                         // the identical reader code works there; hand the next program
-                                         // the same baseline. (The emulator does not model priorities, so
-                                         // only a burn could catch this.)
+        psx_io::irq::set_mask(0);
+        psx_io::irq::ack(u32::MAX);
+        // Disable every DMA channel but keep the BIOS's priority ladder.
+        // The third debug burn proved silicon cares about the difference:
+        // with DPCR fully zeroed, re-enabling channel 3 alone (enable bit,
+        // priority nibble 0) left the CD DMA transferring nothing, and
+        // every chain-loaded header arrived as all zeros with no drive
+        // error. Standalone programs inherit 0x07654321 from the BIOS and
+        // the identical reader code works there; hand the next program
+        // the same baseline. (The emulator does not model priorities, so
+        // only a burn could catch this.)
         psx_io::write32(0x1F80_10F0, 0x0765_4321); // DPCR
                                                    // GP1(00h): reset the GPU (display off, FIFO cleared, defaults).
-        psx_io::write32(0x1F80_1814, 0);
+        psx_io::gpu::write_gp1(0);
     }
     // Clear cop0 SR.IEc (bit 0) so no interrupt fires between here and the
     // game's own setup. Shift the bit out and back rather than masking with a
@@ -583,7 +583,7 @@ unsafe fn enter(pc0: u32, gp0: u32, sp: u32, lba_offset: u32, cdda_track_base: u
 /// optimizer cannot delete it (the first debug burn proved it will).
 fn settle_delay() {
     for _ in 0..1_500_000u32 {
-        unsafe { core::ptr::read_volatile(0x1F80_1814 as *const u32) };
+        psx_io::gpu::gpustat();
     }
 }
 

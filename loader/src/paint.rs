@@ -11,7 +11,6 @@
 use psx_font::fonts::basic::BASIC_BITMAP;
 
 /// GP0/GP1 ports.
-const GP0: u32 = 0x1F80_1810;
 const GP1: u32 = 0x1F80_1814;
 
 /// One GP0 packet: wait for GPUSTAT bit 26 (ready for a new command)
@@ -29,13 +28,10 @@ const GP1: u32 = 0x1F80_1814;
 /// makes on this same console. Bounded so a dead GPU cannot hang the
 /// panel that is trying to report on it.
 fn gp0_packet(words: &[u32]) {
-    for _ in 0..1_000_000u32 {
-        if unsafe { psx_io::read32(GP1) } & (1 << 26) != 0 {
-            break;
-        }
-    }
+    // Preserve best-effort diagnostics on timeout; no reset or unbounded wait.
+    let _ = psx_io::gpu::try_wait_cmd_ready(1_000_000);
     for &word in words {
-        unsafe { psx_io::write32(GP0, word) };
+        psx_io::gpu::write_gp0(word);
     }
 }
 

@@ -9,23 +9,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
-name = "carousel"
-version = "0.1.0"
-dependencies = [
- "psx-math",
-]
-
-[[package]]
-name = "disc-toc"
-version = "0.1.0"
-
-[[package]]
 name = "launcher"
 version = "0.1.0"
 dependencies = [
- "carousel",
- "disc-toc",
  "psx-asset",
+ "psx-carousel",
+ "psx-disc-toc",
  "psx-font",
  "psx-gpu",
  "psx-io",
@@ -45,6 +34,17 @@ dependencies = [
  "psx-gte",
  "psxed-format",
 ]
+
+[[package]]
+name = "psx-carousel"
+version = "0.1.0"
+dependencies = [
+ "psx-math",
+]
+
+[[package]]
+name = "psx-disc-toc"
+version = "0.1.0"
 
 [[package]]
 name = "psx-font"

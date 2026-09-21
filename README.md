@@ -57,6 +57,11 @@ pin unchanged. The legacy `make run` target builds the frontend from the
 historical hydrated source; the explicit command above also works with split
 source overrides.
 
+The carousel geometry and PSXDEMO1 catalog/checksum format are shared
+engine crates (`psx-carousel` and `psx-disc-toc`) in the locked `.psoxide`
+hydration. `make psoxide` verifies the imported source receipt; the launcher,
+loader and host packer no longer maintain separate collection-support copies.
+
 ## Controls
 
 - Left / Right: choose a game or Credits
