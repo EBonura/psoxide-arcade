@@ -16,7 +16,7 @@ use psx_font::{fonts::BASIC_8X16, FontAtlas};
 use psx_gpu::material::TextureMaterial;
 use psx_gpu::ot::OrderingTable;
 use psx_gpu::prim::{QuadGouraud, QuadTexturedMaterial, RectFlat};
-use psx_io::cdrom;
+use psx_io::cdda::CddaStarter;
 use psx_math::int32::clamp_i16;
 use psx_settings::Profile;
 use psx_spu::{self as spu, CdVolume, SpuAddr, Voice, Volume};
@@ -168,13 +168,6 @@ static mut SCORE_FLYBY_QUAD: QuadTexturedMaterial = QuadTexturedMaterial::with_m
     TextureMaterial::opaque(0, 0, (0, 0, 0)),
 );
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum CddaStartStep {
-    SetMode,
-    Demute,
-    Play,
-}
-
 struct MagikaaaaaarpPong {
     p1_y: i16,
     p2_y: i16,
@@ -195,10 +188,8 @@ struct MagikaaaaaarpPong {
     rally_hits: u32,
     two_player: bool,
     cdda_started: bool,
-    cdda_start_step: CddaStartStep,
+    cdda_starter: CddaStarter,
     cdda_started_tick: u32,
-    cdda_next_retry_tick: u32,
-    cdda_wait_logged: bool,
     font: Option<FontAtlas>,
     shell: MicrogameShell<3>,
 }
@@ -225,10 +216,10 @@ impl MagikaaaaaarpPong {
             rally_hits: 0,
             two_player: false,
             cdda_started: false,
-            cdda_start_step: CddaStartStep::SetMode,
+            cdda_starter: CddaStarter::new()
+                .with_spins(CDROM_COMMAND_SPINS)
+                .with_retry_ticks(GONCHAROV_RETRY_TICKS),
             cdda_started_tick: 0,
-            cdda_next_retry_tick: GONCHAROV_START_DELAY_TICKS,
-            cdda_wait_logged: false,
             font: None,
             shell: MicrogameShell::new(Profile::new(ActionMap::new([]))),
         }
@@ -253,45 +244,17 @@ impl MagikaaaaaarpPong {
 
     fn maybe_start_goncharov(&mut self, tick: u32) {
         if self.cdda_started {
-            if tick.saturating_sub(self.cdda_started_tick) >= GONCHAROV_LOOP_TICKS {
-                self.cdda_started = false;
-                self.cdda_start_step = CddaStartStep::SetMode;
-                self.cdda_next_retry_tick = tick;
-                self.cdda_wait_logged = false;
-            } else {
+            if tick.saturating_sub(self.cdda_started_tick) < GONCHAROV_LOOP_TICKS {
                 return;
             }
+            self.cdda_started = false;
+            // Warm loop restart keeps its immediate scheduling policy.
+            self.cdda_starter.begin_after(tick, 0);
         }
-        if tick < self.cdda_next_retry_tick {
-            return;
-        }
-
-        trace_cdda_step(self.cdda_start_step);
-        if issue_cdda_step(self.cdda_start_step) {
-            trace_cdda_step_ack(self.cdda_start_step);
-            self.cdda_wait_logged = false;
-            match self.cdda_start_step {
-                CddaStartStep::SetMode => {
-                    self.cdda_start_step = CddaStartStep::Demute;
-                    self.cdda_next_retry_tick = tick.saturating_add(2);
-                }
-                CddaStartStep::Demute => {
-                    self.cdda_start_step = CddaStartStep::Play;
-                    self.cdda_next_retry_tick = tick.saturating_add(2);
-                }
-                CddaStartStep::Play => {
-                    self.cdda_started = true;
-                    self.cdda_started_tick = tick;
-                    self.cdda_start_step = CddaStartStep::SetMode;
-                    game_trace("magikarp: cdda ok");
-                }
-            }
-        } else {
-            self.cdda_next_retry_tick = tick.saturating_add(GONCHAROV_RETRY_TICKS);
-            if !self.cdda_wait_logged {
-                game_trace("magikarp: cdda busy");
-                self.cdda_wait_logged = true;
-            }
+        if self.cdda_starter.tick(tick, TRACK_GONCHAROV) {
+            self.cdda_started = true;
+            self.cdda_started_tick = tick;
+            game_trace("magikarp: cdda ok");
         }
     }
 
@@ -384,6 +347,8 @@ impl Scene for MagikaaaaaarpPong {
         spu::set_cd_volume(CdVolume::linear(1, 4), CdVolume::linear(1, 4));
         spu::enable_cd_audio(true);
         game_trace("magikarp: cd route ok");
+        self.cdda_starter
+            .begin_after(0, GONCHAROV_START_DELAY_TICKS);
         game_trace("magikarp: cdda deferred");
         assert!(SPECTRUM_DATA.len() == SPECTRUM_FRAME_COUNT * SPECTRUM_BANDS);
         game_trace("magikarp: spectrum ok");
@@ -1039,34 +1004,6 @@ fn upload_opaque_clut(rect: VramRect, bytes: &[u8]) {
         i += 2;
     }
     upload_bytes(rect, &marked[..bytes.len()]);
-}
-
-fn trace_cdda_step(step: CddaStartStep) {
-    match step {
-        CddaStartStep::SetMode => game_trace("magikarp: cdda setmode"),
-        CddaStartStep::Demute => game_trace("magikarp: cdda demute"),
-        CddaStartStep::Play => game_trace("magikarp: cdda play"),
-    }
-}
-
-fn trace_cdda_step_ack(step: CddaStartStep) {
-    match step {
-        CddaStartStep::SetMode => game_trace("magikarp: cdda setmode ack"),
-        CddaStartStep::Demute => game_trace("magikarp: cdda demute ack"),
-        CddaStartStep::Play => game_trace("magikarp: cdda play ack"),
-    }
-}
-
-fn issue_cdda_step(step: CddaStartStep) -> bool {
-    match step {
-        CddaStartStep::SetMode => {
-            cdrom::try_set_mode(cdrom::MODE_CDDA, CDROM_COMMAND_SPINS).is_some()
-        }
-        CddaStartStep::Demute => cdrom::try_demute(CDROM_COMMAND_SPINS).is_some(),
-        CddaStartStep::Play => {
-            cdrom::try_play_track(TRACK_GONCHAROV, CDROM_COMMAND_SPINS).is_some()
-        }
-    }
 }
 
 fn draw_title(font: &FontAtlas, tick: u32) {

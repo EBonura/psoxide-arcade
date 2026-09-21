@@ -98,8 +98,8 @@ disc: launcher games mkdisc shots
 		--describe "MAGIKAAAAARP PONG=Pong with live CD audio and spectrum bars. Goncharov by magikAAAAArp.|Pong con audio CD e barre dello spettro. Goncharov dei magikAAAAArp."
 
 check: psoxide
-	cd disc-toc && cargo test
-	cd carousel && cargo test
+	cargo test --manifest-path .psoxide/engine/Cargo.toml -p psx-disc-toc
+	cargo test --manifest-path .psoxide/engine/Cargo.toml -p psx-carousel
 	cd tools/mkdisc && cargo test
 	$(MAKE) disc
 
