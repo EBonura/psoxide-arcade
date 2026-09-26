@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- The six sound effects are cooked with the PSoXide SDK's shared SPU-ADPCM
+  encoder (SDK a156a2f), each within 0.6 dB of the level it shipped at.
+
 ## Source 2026.09.05
 
 This source snapshot is tagged `source-2026.09.05`. Download versions are

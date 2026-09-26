@@ -1,5 +1,5 @@
 ROOT := $(CURDIR)
-VERSION := 0.1.0
+VERSION := 0.1.1
 PSOXIDE := $(ROOT)/.psoxide
 FRONTEND ?= frontend
 PSOXIDE_FROM ?=
