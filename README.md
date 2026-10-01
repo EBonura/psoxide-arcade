@@ -73,15 +73,14 @@ loader and host packer no longer maintain separate collection-support copies.
 
 The standalone image owns Magikarp Pong's Goncharov CDDA track. Goncharov is
 by [magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used
-with the band's permission. On the full PSoXide Demo Disc, GH-PSX is
-intentionally pointed at that same physical track.
+with the band's permission.
 
 ## Hardware status
 
 The chain-loader and CDDA relocation are inherited from the hardware-proven
 demo-disc path, but the new nested route still needs one owner-console burn:
-selector, all three launches, Magikarp audio, GH-PSX borrowing, and reset back
-to the outer menu.
+selector, all three launches, Magikarp audio, and reset back to the outer
+menu.
 
 ## Recent changes
 
