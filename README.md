@@ -11,18 +11,19 @@ selector and each game are separate PS-X EXE programs, so only the selected
 game occupies runtime memory.
 
 The repository was extracted with filtered history from PSoXide. The
-[SDK](https://github.com/EBonura/PSoXide) and
-[engine](https://github.com/EBonura/PSoXide-editor/tree/main/engine) now have
-separate repositories; the three games and their collection release live here.
-The standalone `psoxide-pin/` retains a reproducible historical dependency,
-while the demo disc explicitly supplies its tested split components.
+[SDK](https://github.com/EBonura/PSoXide),
+[engine](https://github.com/EBonura/PSoXide-editor/tree/main/engine) and
+[emulator](https://github.com/EBonura/PSoXide-emulator) have separate
+repositories; the three games and their collection release live here.
+`components.lock.json` pins the exact revisions a standalone build uses, while
+the demo disc explicitly supplies its tested split components.
 
 ## Build
 
 Install Rust through rustup, Make, Python 3 with Pillow, host C/C++ build
 tools and `mipsel-none-elf-objdump` on `PATH`. The checked-in toolchain selects
-the nightly and Rust components. Access to this repository is required while
-it remains private.
+the nightly and Rust components. Clone into a path without spaces: the
+Makefile does not quote paths.
 
 ```sh
 git clone https://github.com/EBonura/psoxide-arcade.git
@@ -34,7 +35,8 @@ make disc
 make check
 ```
 
-`make disc` hydrates the pinned SDK/engine into ignored `.psoxide/`, builds all
+`make disc` downloads the pinned SDK, engine and emulator sources from their
+public GitHub repositories into ignored `.psoxide/`, builds all
 five guest executables, checks instruction hazards and packs the collection.
 
 The standalone mixed-mode image is written to:
@@ -53,9 +55,8 @@ the separate PSoXide emulator:
 
 Use `PSOXIDE_FROM=/path/to/PSoXide-editor` with an already bootstrapped editor
 checkout to build against split SDK/engine sources while keeping the standalone
-pin unchanged. The legacy `make run` target builds the frontend from the
-historical hydrated source; the explicit command above also works with split
-source overrides.
+pin unchanged. `make run FRONTEND=/path/to/frontend` builds the disc and
+then runs the same `launch` command.
 
 The carousel geometry and PSXDEMO1 catalog/checksum format are shared
 engine crates (`psx-carousel` and `psx-disc-toc`) in the locked `.psoxide`
@@ -84,8 +85,9 @@ to the outer menu.
 
 ## Recent changes
 
-Source snapshot **2026.09.05**: Documented the separate SDK/engine dependencies and collection build.
-See the [changelog](CHANGELOG.md) for the remaining changes and published download versions.
+**0.1.1**: the six sound effects are cooked with the PSoXide SDK's shared
+SPU-ADPCM encoder. See the [changelog](CHANGELOG.md) for the remaining changes
+and published download versions.
 
 ## PSoXide source components
 
@@ -93,3 +95,11 @@ See the [changelog](CHANGELOG.md) for the remaining changes and published downlo
 `make psoxide` verifies and materializes them into the ignored `.psoxide` directory.
 The demo disc can pass `PSOXIDE_FROM` with a verified composite editor checkout.
 Pass `FRONTEND=/path/to/PSoXide-emulator/target/release/frontend` to player helpers.
+
+## Licence
+
+The code is GPL-2.0-or-later; see [LICENSE](LICENSE). The Goncharov audio,
+the magikAAAAArp artwork and the other assets listed in
+[THIRD_PARTY.md](THIRD_PARTY.md) are not covered by that licence. Breakout,
+Pong, Space Invaders and Magikarp are trademarks of their respective owners;
+this project is not affiliated with or endorsed by them.
