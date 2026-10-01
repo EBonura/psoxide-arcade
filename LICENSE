@@ -338,8 +338,8 @@ library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.
 
 
-PSoXide Notice
-==============
+PSoXide Arcade Notice
+=====================
 
 Copyright (C) 2025 Emanuele Bonura.
 
@@ -353,83 +353,27 @@ WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 General Public License above for more details.
 
-Third-party references
-----------------------
+Third-party material
+--------------------
 
-PSoXide is independent software, not affiliated with or endorsed by Sony
-Interactive Entertainment Inc., Sony Computer Entertainment, or any of
+The Goncharov audio, the magikAAAAArp artwork and the other assets listed
+in THIRD_PARTY.md belong to their respective rights holders and are not
+licensed under the GPL.
+
+PSoXide Arcade is independent software, not affiliated with or endorsed by
+Sony Interactive Entertainment Inc., Sony Computer Entertainment, or any of
 their subsidiaries. "PlayStation" and related marks are trademarks of
 their respective owners and are referenced here solely to describe the
-hardware target this software emulates.
+hardware target. Breakout, Pong, Space Invaders and Magikarp are
+trademarks of their respective owners; this project is not affiliated with
+or endorsed by them.
 
-The emulator core was developed alongside the following references:
+The SDK, engine and emulator this collection builds against are separate
+projects, each with its own LICENSE:
 
-- PCSX-Redux (https://github.com/grumpycoders/pcsx-redux),
-  GPL-2.0-or-later. Used during bring-up as a differential parity
-  oracle (that harness has since been retired; real PS1 hardware is
-  the accuracy oracle now) and as a reference implementation for ADSR
-  envelope rate tables, AAN IDCT + YUV->RGB pipeline (MDEC), DMA
-  interrupt-controller register semantics, CD-ROM command timing, and
-  the hardware-renderer primitive pipeline. Algorithm shapes and
-  naming conventions are kept close to Redux's in those modules. The
-  CPU triangle rasterizer is no longer Redux's scanline algorithm: it
-  was rewritten in 2026-06 to the silicon-verified coverage rule after
-  hardware measurements disproved Redux's edge behaviour.
+- https://github.com/EBonura/PSoXide
+- https://github.com/EBonura/PSoXide-editor
+- https://github.com/EBonura/PSoXide-emulator
 
-- nocash PSX-SPX (https://problemkaputt.de/psxspx.htm) -- public
-  hardware documentation used for register layout, ADPCM filter
-  tables, and observable behaviour.
-
-- DuckStation (https://github.com/stenzek/duckstation), CC-BY-NC-ND
-  4.0 -- consulted as a behavioural reference (triangle coverage
-  rule, CD-ROM data-read semantics, GTE behaviour). No source code
-  from DuckStation is included or derived in this repository;
-  observations about its documented/runtime behaviour informed
-  implementations that are independently validated against real PS1
-  hardware.
-
-- Mednafen-PSX (https://mednafen.github.io/), GPL-2.0-or-later --
-  consulted as a behavioural reference for PSX subsystem semantics,
-  including the triangle coverage rule. No source code from Mednafen
-  is included or derived in this repository.
-
-- ps1-tests by Jakub Czekanski (JaCzekanski)
-  (https://github.com/JaCzekanski/ps1-tests) -- the real-console
-  captured GTE test corpus (gte-fuzz logs) is used as an external
-  conformance oracle by the `gte_fuzz_replay` harness. The corpus is
-  fetched by developers from its upstream releases and is not
-  included or redistributed in this repository.
-
-- MiSTer PSX core (https://github.com/MiSTer-devel/PSX_MiSTer) --
-  consulted as a behavioural/architectural reference (GTE internal
-  operation ordering). No HDL or code from it is included or derived
-  in this repository.
-
-- Neill Corlett's SPU envelope notes -- the canonical write-up of PSX
-  SPU envelope decode behaviour, embedded as quoted commentary in
-  PCSX-Redux's `src/spu/adsr.cc`. Referenced via that quotation.
-
-The SDK, engine, and editor build on the following as influences. No
-source code from them is included or derived in this repository:
-
-- PSn00bSDK (https://github.com/Lameguy64/PSn00bSDK) -- the open-source
-  PS1 SDK that introduced the author to PSX development. The PSoXide SDK
-  is an independent Rust reimplementation, not a port.
-
-- OpenLara (https://github.com/XProger/OpenLara) -- architectural
-  inspiration for the engine's room/portal world model (the classic
-  adaptive sector-grid room system).
-
-- Godot (https://godotengine.org/) -- inspiration for the editor's
-  scene-tree and resource authoring model. PSoXide does not embed or
-  fork Godot.
-
-PlayStation BIOS images, commercial game disc images, and PCSX-Redux
-binaries or source trees are not included in this repository and are
-not redistributed by this project. Users must supply their own legally
-obtained copies.
-
-Ignored tests (canaries, commercial guards) may require:
-
-- PSoXide runs supported homebrew through its built-in runtime; no external firmware is loaded.
-- local game images you legally own
+PlayStation BIOS images and commercial game disc images are not included
+in this repository and are not redistributed by this project.
