@@ -3,8 +3,6 @@
 **[Download the latest version on itch.io](https://bonnie-studios.itch.io/psoxide-demo-disc)** (it ships on the PSoXide Demo Disc), or [play it in your browser](https://bonnie-studios.itch.io/psoxide).
 
 > **Largely written with agentic coding.** I direct the agents and test their work in two places: PSoXide's emulator, which profiles every cycle, and a real PlayStation, which shows me where the emulator is wrong. Working between them is where the accuracy and the speed come from. [How PSoXide is built](https://ebonura.github.io/PSoXide/how-its-built/)
->
-> **AI-generated content:** code only. Sound effects are a CC0 pack, and the Goncharov track and album art are magikAAAAArp's, used with permission.
 
 PSoXide Arcade is a native PlayStation collection containing Breakout, Space
 Invaders, and Magikarp Pong. Its cabinet-style selector keeps all three games
