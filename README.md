@@ -2,6 +2,8 @@
 
 **[Download the latest version on itch.io](https://bonnie-studios.itch.io/psoxide-demo-disc)** (it ships on the PSoXide Demo Disc), or [play it in your browser](https://bonnie-studios.itch.io/psoxide).
 
+> **Built with agentic coding.** AI coding agents write most of the code in PSoXide and in this game. I direct them, review what they produce, and test the results in the emulator and on a real PlayStation.
+
 PSoXide Arcade is a native PlayStation collection containing Breakout, Space
 Invaders, and Magikarp Pong. Its cabinet-style selector keeps all three games
 visible on one CRT, with a dedicated control deck for music and credits. The
