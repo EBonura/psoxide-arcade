@@ -1,8 +1,6 @@
 # PSoXide Arcade
 
-Start with the [PSoXide Demo Disc](https://bonnie-studios.itch.io/psoxide-demo-disc): it includes PSoXide Arcade
-and the other Bonnie Studios PlayStation demos. Standalone downloads are available
-for testing just this collection.
+**[Download the latest version on itch.io](https://bonnie-studios.itch.io/psoxide-demo-disc)** (it ships on the PSoXide Demo Disc), or [play it in your browser](https://bonnie-studios.itch.io/psoxide).
 
 PSoXide Arcade is a native PlayStation collection containing Breakout, Space
 Invaders, and Magikarp Pong. Its cabinet-style selector keeps all three games
