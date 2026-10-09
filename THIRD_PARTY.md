@@ -25,8 +25,20 @@ and is used with the band's permission.
 ## Sound effects
 
 `assets/audio/freesfx/psau/*.psau` are cooked from the Kronbits Free SFX
-archive, released as CC0. `tools/cook-audio.py` lists the source clip for each
-file.
+archive (sha256 `3378feb1912e0081a7e3d07b7dd378e7e0a4ec4696c25d18b0edd4aae1330ac1`),
+released as CC0. Each clip is encoded at 44.1 kHz, peak 0.9, with
+`tools/psx-audio-cook encode <clip.wav> <out.psau> --rate 44100 --format psau`
+(the SDK's shared SPU-ADPCM cooker). The source clip for each file, by path
+inside the archive:
+
+| file | clip |
+|---|---|
+| `ui_beep.psau` | `FreeSFX/GameSFX/Alarms Blip Beeps/Retro Beeep 06.wav` |
+| `hit_punch.psau` | `FreeSFX/GameSFX/Impact/Retro Impact Punch 07.wav` |
+| `hit_metal.psau` | `FreeSFX/GameSFX/Impact/Retro Impact Metal 36.wav` |
+| `pickup_coin.psau` | `FreeSFX/GameSFX/PickUp/Retro PickUp Coin 04.wav` |
+| `explosion_short.psau` | `FreeSFX/GameSFX/Explosion/Retro Explosion Short 01.wav` |
+| `swoosh.psau` | `FreeSFX/GameSFX/Swoosh/Retro Swooosh 02.wav` |
 
 ## Names
 
