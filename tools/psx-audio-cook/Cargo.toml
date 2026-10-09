@@ -1,5 +1,5 @@
-# The SDK's shared SPU-ADPCM cooker (psx-audio-cook) as a command line for
-# tools/cook-audio.py. The crate comes from the hydrated .psoxide tree; it is
+# The SDK's shared SPU-ADPCM cooker (psx-audio-cook) as a command line, used
+# to cook assets/audio/freesfx/psau (see THIRD_PARTY.md). The crate comes from the hydrated .psoxide tree; it is
 # not a member of that tree's root workspace, so this binary lives in its own.
 [package]
 name = "psx-audio-cook-cli"
