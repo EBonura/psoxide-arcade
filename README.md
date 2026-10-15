@@ -39,7 +39,8 @@ make check
 public GitHub repositories into ignored `.psoxide/`, builds all
 five guest executables, checks instruction hazards and packs the collection.
 
-The standalone mixed-mode image is written to:
+The standalone image (one data track; the music is an XA file inside it) is
+written to:
 
 ```text
 dist/psoxide-arcade.cue
@@ -68,19 +69,22 @@ loader and host packer no longer maintain separate collection-support copies.
 - Left / Right: choose a game or Credits
 - Cross or Start: launch
 - Up / Down: switch English / Italian
-- L1 / R1: previous / next music track, including Music Off
 - In each game: use its title and pause menus
 
-The standalone image owns Magikarp Pong's Goncharov CDDA track. Goncharov is
-by [magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used
-with the band's permission.
+The standalone image carries Magikarp Pong's Goncharov as an XA-ADPCM file
+(`MUSIC1.XA`, 37.8 kHz stereo). The game finds it in the root directory, loops
+it with the SDK's XA player, and times the spectrum bars from the drive's own
+position in the song. Goncharov is by
+[magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos) and is used with
+the band's permission. `arcade-assets/audio/README.md` says how the file was
+made and how to re-author it.
 
 ## Hardware status
 
-The chain-loader and CDDA relocation are inherited from the hardware-proven
-demo-disc path, but the new nested route still needs one owner-console burn:
-selector, all three launches, Magikarp audio, and reset back to the outer
-menu.
+The chain-loader is inherited from the hardware-proven demo-disc path, but the
+nested route still needs one owner-console burn: selector, all three launches,
+Magikarp audio (XA, tested only in the emulator so far), and reset back to the
+outer menu.
 
 ## Recent changes
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Magikarp Pong's Goncharov is an XA-ADPCM file inside the data track instead of
+  a CD-DA track, looped by the SDK's XA player, with the spectrum bars timed
+  from the drive's position in the song (the table is baked from the full
+  track, 7017 frames). The image is one data track and no audio tracks.
+- The selector and the host packer drop their CD-DA code (the standalone
+  collection never had a menu track).
+- Repinned the SDK, engine and emulator to revisions on their mains (SDK
+  4e97cf3; the old pin, cc668b56b, was never pushed), ported the three games
+  to the current engine drawing API, and imported the locked components with
+  `psoxide-components` instead of the Python script.
+
 ## 0.1.1
 
 - The six sound effects are cooked with the PSoXide SDK's shared SPU-ADPCM

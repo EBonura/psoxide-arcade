@@ -10,9 +10,10 @@ licensed for reuse under the GPL.
 Goncharov is by [magikAAAAArp](https://www.youtube.com/@magikAAAAArp/videos)
 and is used with the band's permission.
 
-- `arcade-assets/audio/goncharov.cdda`: the CD-DA audio track.
+- `arcade-assets/audio/xa/MUSIC1.XA`: the track, encoded as XA-ADPCM (37.8 kHz
+  stereo), with the song table `songs.rs` and the encoder report `music.json`.
 - `games/magikarp-pong/assets/goncharov_spectrum_16x30hz.bin`: a spectrum
-  table computed from that track.
+  table computed from the full track.
 
 ## magikAAAAArp artwork and Magikarp Pong images
 
