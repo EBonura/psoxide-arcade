@@ -20,6 +20,7 @@ name = "psx-chainloader"
 version = "0.1.0"
 dependencies = [
  "psx-font",
+ "psx-hw",
  "psx-io",
  "psx-pack",
 ]
@@ -39,6 +40,7 @@ dependencies = [
 name = "psx-gpu"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "psx-hw",
  "psx-io",
 ]

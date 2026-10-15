@@ -1,0 +1,1 @@
+{"stereo":true,"sample_rate":37800,"drive_speed":1,"stride":4,"sectors_per_second":"37800/2016","empty_slots":3,"total_sectors":17560,"files":[{"name":"MUSIC1.XA","number":1,"sectors":17560,"song_span_sectors":17544,"songs":1}],"songs":[{"name":"goncharov","file":0,"channel":0,"samples":8842176,"seconds":233.920}]}

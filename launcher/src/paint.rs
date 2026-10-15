@@ -36,16 +36,7 @@ fn meter_bar(x: i16, base_y: i16, level: u8) {
     );
 }
 
-/// The level meter, one bar per band of the track's pre-analysed spectrum,
-/// low frequencies on the left.
-pub fn level_meter(x: i16, base_y: i16, levels: &[u8]) {
-    for (band, level) in levels.iter().enumerate() {
-        meter_bar(x + band as i16 * METER_PITCH, base_y, *level);
-    }
-}
-
-/// Fallback for a track the disc carries no analysis for: bars lagging each
-/// other off the beat, which keeps time without listening.
+/// The jukebox strip's level meter: bars lagging each other off the beat.
 pub fn level_meter_beat(x: i16, base_y: i16, pulse: u8) {
     for bar in 0..6i16 {
         let level = pulse.saturating_sub((bar as u16 * 34) as u8);

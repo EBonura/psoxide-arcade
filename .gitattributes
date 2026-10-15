@@ -3,3 +3,4 @@
 *.psxt binary
 *.bin binary
 
+*.XA binary

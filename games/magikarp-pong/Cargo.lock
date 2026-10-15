@@ -14,6 +14,7 @@ version = "0.1.0"
 dependencies = [
  "psx-asset",
  "psx-engine",
+ "psx-fmv",
  "psx-font",
  "psx-gpu",
  "psx-io",
@@ -29,6 +30,7 @@ name = "psx-asset"
 version = "0.1.0"
 dependencies = [
  "psx-gte",
+ "psx-hw",
  "psxed-format",
 ]
 
@@ -40,6 +42,7 @@ dependencies = [
  "psx-font",
  "psx-gpu",
  "psx-gte",
+ "psx-hw",
  "psx-io",
  "psx-level",
  "psx-math",
@@ -49,6 +52,20 @@ dependencies = [
  "psx-sfx",
  "psx-spu",
  "psx-telemetry",
+ "psx-tick",
+ "psx-vram",
+]
+
+[[package]]
+name = "psx-fmv"
+version = "0.1.0"
+dependencies = [
+ "psx-gpu",
+ "psx-hw",
+ "psx-io",
+ "psx-pack",
+ "psx-rt",
+ "psx-spu",
  "psx-vram",
 ]
 
@@ -67,6 +84,7 @@ dependencies = [
 name = "psx-gpu"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "psx-hw",
  "psx-io",
 ]
@@ -76,6 +94,7 @@ name = "psx-gte"
 version = "0.1.0"
 dependencies = [
  "psx-gte-core",
+ "psx-hw",
 ]
 
 [[package]]
@@ -115,6 +134,13 @@ name = "psx-mc"
 version = "0.1.0"
 dependencies = [
  "psx-hw",
+ "psx-io",
+]
+
+[[package]]
+name = "psx-pack"
+version = "0.1.0"
+dependencies = [
  "psx-io",
 ]
 
@@ -161,6 +187,13 @@ dependencies = [
 
 [[package]]
 name = "psx-telemetry"
+version = "0.1.0"
+dependencies = [
+ "psx-hw",
+]
+
+[[package]]
+name = "psx-tick"
 version = "0.1.0"
 
 [[package]]

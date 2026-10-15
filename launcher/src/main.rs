@@ -24,14 +24,12 @@ use psx_font::{
     FontAtlas,
 };
 use psx_gpu::{self as gpu, framebuf::FrameBuffer, Resolution, VideoMode};
-use psx_io::cdda::{CddaClock, CddaEndDetector, CddaStarter};
-use psx_io::cdrom::{self, PlayPosition};
 use psx_io::disc_base;
 use psx_pack::cd::{SectorReader, SECTOR_WORDS};
 use psx_pad::{button, require_analog_port1, AnalogRequirement, ButtonState, PadMode, PadReader};
 use psx_rt::tty;
 use psx_sfx::{Bank, OneShot, Player};
-use psx_spu::{self as spu, Adsr, CdVolume, Pitch, SpuAddr, Voice, Volume};
+use psx_spu::{Adsr, Pitch, SpuAddr, Voice, Volume};
 use psx_vram::{Clut, TexDepth, Tpage};
 
 /// The chain-load blob, linked at `LOADER_BASE` by `loader/loader.ld`.
@@ -203,30 +201,7 @@ const LINKS_TEXT_DY: i16 = 2;
 const CRED_CACHE_V: u16 = 96;
 const LINKS_CACHE_V: u16 = 152;
 
-/// Ticks between drive-status polls while the menu track plays. Often enough
-/// to restart the loop without a gap anyone notices, rare enough that the
-/// polling does not fight the audio.
-const CDDA_POLL_TICKS: u32 = 30;
-/// Consecutive idle polls that mean the track really has ended. At 30 ticks
-/// a poll this is four seconds of silence, and it has to be that long: the
-/// menu tracks sit at the far end of the disc, and around the cross-disc
-/// seek after Play a real drive spends one to two seconds reporting neither
-/// playing nor seeking. At 3 polls (1.5 s) that window read as track-over
-/// and the menu skipped through all four tracks before playback stuck --
-/// the 2026-08-01 19:10 console recording, music arriving in blips. A
-/// genuine end of track now takes four quiet seconds to advance, which the
-/// inter-track pregap absorbs.
-const CDDA_IDLE_POLLS_TO_ADVANCE: u8 = 8;
-/// Spin budget per CD command. Silicon wants more than an emulator does.
-const CDDA_SPINS: u32 = 0x10_0000;
-/// Ticks after an accepted Play by which the drive must have been seen
-/// actually playing, or the start is retried. Covers a spin-up plus a
-/// worst-case seek with room to spare.
-const PLAY_CONFIRM_TICKS: u32 = 480;
-/// How close to a track's known length "quiet" still counts as the song
-/// finishing rather than the drive losing its place mid-track.
-const END_MARGIN_MS: u32 = 4000;
-/// Display frames a second, which is what the CD clock counts in.
+/// Display frames a second, which is what the sound effects are timed in.
 const TICKS_HZ: u32 = 60;
 
 /// How loud the two blips sit against the menu music, which plays at full
@@ -292,12 +267,6 @@ static mut READER: SectorReader = SectorReader::new();
 static mut TOC_SECTOR: [u32; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize] =
     [0; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize];
 
-/// Room for every menu track's level-meter data. Read once at boot rather
-/// than per track, so skipping stays as quick as the drive allows.
-const SPECTRUM_MAX_SECTORS: usize = 192;
-static mut SPECTRUM: [u32; SECTOR_WORDS * SPECTRUM_MAX_SECTORS] =
-    [0; SECTOR_WORDS * SPECTRUM_MAX_SECTORS];
-
 #[no_mangle]
 fn main() {
     tty::println("launcher: booted");
@@ -336,8 +305,6 @@ fn main() {
     );
 
     let mut all_entries = [Entry::new("", 0, 0, 0); MAX_ENTRIES];
-    // Read the table before a note of music plays: a data read while the
-    // drive is playing CD-DA is the one thing this hardware is worst at.
     let header = read_toc(&mut all_entries);
     let all_count = header.map_or(0, |h| h.count);
     // What the carousel actually shows. Gated entries stay out of it until
@@ -351,57 +318,8 @@ fn main() {
         tty::println("launcher: no table of contents on this disc");
     }
 
-    // Before the music starts, for the same reason the table is: reading the
-    // disc while it plays CD-DA is what this hardware is worst at.
-    let spectrum_frames = read_spectrum(header.as_ref());
-    let menu_track = header.map_or(0, |h| h.menu_track) as u8;
-    let menu_track_count = header.map_or(0, |h| h.menu_track_count).max(1) as u8;
-    // Which of the run is playing. Cycling beats looping one track when the
-    // disc might sit on the menu for a whole presentation.
-    let mut menu_track_index: u8 = 0;
-    let mut music = CddaStarter::new().with_spins(CDDA_SPINS);
-    let mut clock = CddaClock::new(TICKS_HZ);
     let mut tick: u32 = 0;
-    let mut next_music_poll = CDDA_POLL_TICKS;
-    // End-of-track detection lives in the SDK now: the detector only arms
-    // once the drive has been SEEN playing the current track, which is what
-    // stops the 0x00 stop/spin-up window a real drive reports from reading
-    // as track-over (the first debug burn's phantom skip).
-    let mut track_end = CddaEndDetector::new(CDDA_IDLE_POLLS_TO_ADVANCE);
-    // --- CD debug overlay state (SELECT toggles the display; capture is
-    // always on so the counters are honest from boot). Built after the first
-    // silicon burn: tracks double-advance and chain-loads fail red, and the
-    // emulator reproduces neither, so the console screen is the debugger.
-    let mut debug = false;
-    let mut stat_hist = [0xEEu8; 10]; // newest first
-    let mut stat_timeouts: u16 = 0;
-    let mut adv_idle: u16 = 0;
-    let mut adv_btn: u16 = 0;
-    // Same-track restarts by the playback watchdog: a start that was never
-    // seen playing, or quiet in the middle of a track.
-    let mut stalls: u16 = 0;
-    let mut confirm_by: u32 = 0;
-    let mut stop_timeouts: u16 = 0;
-    // Where the drive says its head is, polled only while the overlay is
-    // up. The v0.4 footage showed WHAT the drive was doing (seeking,
-    // forever) but not WHERE; this is the missing column.
-    let mut last_pos: Option<PlayPosition> = None;
-    let mut next_pos_poll: u32 = CDDA_POLL_TICKS + 15;
-    let mut hsk_begin: u32 = 0;
-    let mut hsk_ticks: u32 = 0; // last completed Play handshake, in ticks
-    let mut events = [0u8; 10]; // bit7 = idle advance, bit6 = button; low bits = track index
-    if menu_track != 0 {
-        // The CD controller playing is only half of it: the SPU's CD input
-        // comes up silent, so without this the drive spins a track nobody
-        // hears.
-        spu::init();
-        spu::set_main_volume(Volume::MAX, Volume::MAX);
-        spu::set_cd_volume(CdVolume::MAX, CdVolume::MAX);
-        spu::enable_cd_audio(true);
-        music.begin(tick);
-    }
-    // Independent of the music: the blips play whether or not the disc
-    // carries a menu track.
+    // The blips.
     //
     // psx-sfx owns what used to sit here: the sequential upload, the key-on
     // that writes a repeat address, and the cutoff that stops a one-shot on a
@@ -456,93 +374,6 @@ fn main() {
     }
     loop {
         tick = tick.wrapping_add(1);
-        // One slot past the last track is MUSIC OFF: the L1/R1 cycle
-        // walks through every song and then silence, so muting needs no
-        // button of its own and the panel can say which state it is in.
-        let muted = menu_track != 0 && menu_track_index >= menu_track_count;
-        // One clock read a frame, up here so the music watchdog below and
-        // the beat code further down agree on where the song is.
-        let song_ms = if !muted && clock.playing() {
-            clock.tick(tick)
-        } else {
-            0
-        };
-        if menu_track != 0 && !muted {
-            // Debug-only, and issued BEFORE this frame's GetStat: command
-            // then status-drain is the order the controller tolerates (see
-            // CddaStarter's note; the reverse has wedged it on silicon).
-            if debug && music.started() && tick.wrapping_sub(next_pos_poll) < u32::MAX / 2 {
-                next_pos_poll = tick.wrapping_add(CDDA_POLL_TICKS);
-                if let Some(r) = cdrom::try_get_loc_p(CDDA_SPINS) {
-                    if let Some(p) = PlayPosition::parse(&r) {
-                        last_pos = Some(p);
-                    }
-                }
-            }
-            if music.tick(tick, menu_track + menu_track_index) {
-                clock.start(tick);
-                hsk_ticks = tick.wrapping_sub(hsk_begin);
-                // The drive accepted Play; now it must be SEEN playing
-                // before this deadline, or the start gets retried. The
-                // v0.2 console run proved a Play can be accepted and then
-                // sink without trace: the end detector never arms on a
-                // track that never starts, which left the menu silent
-                // forever ("other songs don't work at all").
-                confirm_by = tick.wrapping_add(PLAY_CONFIRM_TICKS);
-            }
-            if music.started() && tick.wrapping_sub(next_music_poll) < u32::MAX / 2 {
-                next_music_poll = tick.wrapping_add(CDDA_POLL_TICKS);
-                let status = cdrom::try_get_stat(CDDA_SPINS);
-                let last_stat = match &status {
-                    Some(r) => r.bytes().first().copied().unwrap_or(0xEF),
-                    None => {
-                        stat_timeouts = stat_timeouts.saturating_add(1);
-                        0xDD
-                    }
-                };
-                stat_hist.copy_within(0..9, 1);
-                stat_hist[0] = last_stat;
-                let status_byte = status.and_then(|r| r.bytes().first().copied());
-                // Quiet long enough to mean the audio is over -- but over
-                // can mean two things, and the spectrum data already on the
-                // disc tells them apart: quiet NEAR the track's known end
-                // is the song finishing (advance), quiet in the middle is
-                // the drive losing the track (retry the same one). Without
-                // an analysis for the track, quiet advances as before.
-                if track_end.poll(status_byte) {
-                    let near_end = header
-                        .and_then(|h| h.spectrum_span(menu_track_index as usize))
-                        .map_or(true, |(_, frames)| {
-                            let duration_ms = frames * 1000 / disc_toc::SPECTRUM_FRAME_RATE;
-                            song_ms + END_MARGIN_MS >= duration_ms
-                        });
-                    if near_end {
-                        menu_track_index = (menu_track_index + 1) % menu_track_count;
-                        adv_idle = adv_idle.saturating_add(1);
-                        push_event(&mut events, 0x80 | menu_track_index);
-                    } else {
-                        stalls = stalls.saturating_add(1);
-                        push_event(&mut events, 0x20 | menu_track_index);
-                    }
-                    hsk_begin = tick;
-                    music.begin(tick);
-                } else if !track_end.armed() && tick.wrapping_sub(confirm_by) < u32::MAX / 2 {
-                    // Accepted but never seen playing: re-run the start
-                    // from Stop, same track, however long it takes. Silence
-                    // first, as the manual skip does -- re-Playing over a
-                    // wedged drive is how it stayed wedged.
-                    if cdrom::try_stop(CDDA_SPINS).is_none() {
-                        stop_timeouts = stop_timeouts.saturating_add(1);
-                    }
-                    stalls = stalls.saturating_add(1);
-                    push_event(&mut events, 0x20 | menu_track_index);
-                    track_end.rearm();
-                    hsk_begin = tick;
-                    music.begin(tick);
-                }
-            }
-        }
-
         // Stop any SFX voice that has outlived its own sample. Volume, not
         // key_off: immediate, and owing nothing to envelope behaviour.
         sfx.tick(tick);
@@ -585,46 +416,11 @@ fn main() {
                 }
             }
         }
-        let loading = menu_track != 0 && !music.started();
         // The pad goes quiet once a launch is under way: the warp is short,
         // and half a browse queued behind it would land in the game.
         if warp < 0 {
             if pressed(button::UP) || pressed(button::DOWN) {
                 italian = !italian;
-            }
-            if pressed(button::SELECT) {
-                debug = !debug;
-            }
-            // Skipping tracks by hand, through every song and then the
-            // MUSIC OFF slot. The drive takes the better part of a second
-            // to pick up a new track; ignore further presses until it has,
-            // or the handshake gets re-armed from the start each time and
-            // never finishes.
-            if menu_track != 0 && !loading {
-                let slots = menu_track_count + 1; // the last one is silence
-                let skip = if pressed(button::R1) {
-                    1
-                } else if pressed(button::L1) {
-                    slots - 1 // one back, without going negative
-                } else {
-                    0
-                };
-                if skip != 0 {
-                    menu_track_index = (menu_track_index + skip) % slots;
-                    // Silence first: the handshake re-issues Play, and leaving the
-                    // old track running under it is how the drive got wedged.
-                    // Entering the off slot, this stop IS the feature.
-                    if cdrom::try_stop(CDDA_SPINS).is_none() {
-                        stop_timeouts = stop_timeouts.saturating_add(1);
-                    }
-                    track_end.rearm();
-                    adv_btn = adv_btn.saturating_add(1);
-                    push_event(&mut events, 0x40 | menu_track_index);
-                    if menu_track_index < menu_track_count {
-                        hsk_begin = tick;
-                        music.begin(tick);
-                    }
-                }
             }
             if count > 0 {
                 // The game-bank keys are laid out left to right, so the pad
@@ -661,16 +457,8 @@ fn main() {
                 boot(&entries[launch_index], &mut fb);
             }
         }
-        // Everything visual answers the beat. The grid was measured off the
-        // audio and shipped in the table, so this stays in step for the whole
-        // length of a track rather than drifting out of it. `song_ms` was
-        // read once at the top of the loop, shared with the watchdog.
-        let beat = match header.and_then(|h| h.beat(menu_track_index as usize)) {
-            Some((beat_ms, phase_ms)) if clock.playing() => {
-                carousel::beat_at(song_ms, beat_ms, phase_ms)
-            }
-            _ => carousel::Beat::default(),
-        };
+        // No menu track on this disc, so there is no beat to answer.
+        let beat = carousel::Beat::default();
         fb.clear(0, 0, 6);
         paint::selection_cabinet(beat.pulse);
         banner.draw(160 - BANNER_W / 2, BANNER_Y);
@@ -686,7 +474,7 @@ fn main() {
             centred(&font, 106, "DISC TABLE OF CONTENTS UNREADABLE", ERROR);
         } else {
             let index = selected.rem_euclid(count as i32) as usize;
-            let hide_text = warp >= 0 || debug || !analog_ok;
+            let hide_text = warp >= 0 || !analog_ok;
             if !hide_text {
                 if entries[index].exe_lba == 0 {
                     paint::text_panel(CARD_X, CRED_Y, CARD_W, CRED_H);
@@ -698,46 +486,11 @@ fn main() {
                     draw_game_cards(&font, &small, &cards, &entries[..count], index, beat.pulse);
                 }
                 paint::arcade_jukebox(JUKE_X, JUKE_Y, JUKE_W, JUKE_H, beat.pulse);
-                if let Some(header) = header {
-                    draw_music_panel(
-                        &small,
-                        &header,
-                        menu_track_index,
-                        &beat,
-                        muted,
-                        loading,
-                        spectrum_frame(&header, menu_track_index, song_ms, spectrum_frames),
-                    );
-                }
+                draw_music_panel(&small);
                 draw_credits_key(&small, entries[index].exe_lba == 0, beat.pulse);
             }
             if warp >= 0 {
                 paint::arcade_launch_shutter(warp, WARP_FRAMES);
-            }
-            if debug {
-                let dur_ms = header
-                    .and_then(|h| h.spectrum_span(menu_track_index as usize))
-                    .map_or(0, |(_, frames)| {
-                        frames * 1000 / disc_toc::SPECTRUM_FRAME_RATE
-                    });
-                draw_cd_debug(
-                    &small,
-                    menu_track + menu_track_index,
-                    music.step_code(),
-                    track_end.armed(),
-                    track_end.quiet_polls(),
-                    hsk_ticks,
-                    &stat_hist,
-                    adv_idle,
-                    adv_btn,
-                    stalls,
-                    stat_timeouts,
-                    stop_timeouts,
-                    &events,
-                    last_pos.as_ref(),
-                    song_ms,
-                    dur_ms,
-                );
             }
             if !analog_ok && warp < 0 {
                 draw_controller_notice(&small);
@@ -785,186 +538,6 @@ fn wrap(text: &str, max: usize) -> (&str, &str) {
         Some(at) => (&text[..at], text[at + 1..].trim_start()),
         None => (&text[..max], text[max..].trim_start()),
     }
-}
-
-/// Who made what is on the disc. The music is here by permission, and an
-/// attribution that only exists in a README is not an attribution, so this is
-/// the page that discharges it: artist first, then every track by name.
-/// The panel, the flag, and the cached block of text on top of them.
-// --- CD debug overlay ---------------------------------------------------
-
-fn push_event(events: &mut [u8; 10], ev: u8) {
-    events.copy_within(0..9, 1);
-    events[0] = ev;
-}
-
-fn put_hex2(buf: &mut [u8], at: usize, v: u8) -> usize {
-    const HEX: &[u8; 16] = b"0123456789ABCDEF";
-    buf[at] = HEX[(v >> 4) as usize];
-    buf[at + 1] = HEX[(v & 0xF) as usize];
-    at + 2
-}
-
-fn put_dec(buf: &mut [u8], at: usize, v: u32) -> usize {
-    let mut digits = [0u8; 10];
-    let mut n = 0;
-    let mut v = v;
-    loop {
-        digits[n] = b'0' + (v % 10) as u8;
-        v /= 10;
-        n += 1;
-        if v == 0 {
-            break;
-        }
-    }
-    for i in 0..n {
-        buf[at + i] = digits[n - 1 - i];
-    }
-    at + n
-}
-
-fn put_str(buf: &mut [u8], at: usize, s: &str) -> usize {
-    buf[at..at + s.len()].copy_from_slice(s.as_bytes());
-    at + s.len()
-}
-
-/// The SELECT overlay, drawn over the description block: the requested
-/// track and handshake state, the raw GetStat bytes the idle detector saw
-/// (newest first), and who advanced the track and why. Everything the
-/// silicon track-skip needs, photographable from the couch.
-#[allow(clippy::too_many_arguments)]
-fn draw_cd_debug(
-    small: &FontAtlas,
-    requested_track: u8,
-    step: u8,
-    armed: bool,
-    idle_polls: u8,
-    hsk_ticks: u32,
-    stat_hist: &[u8; 10],
-    adv_idle: u16,
-    adv_btn: u16,
-    stalls: u16,
-    stat_timeouts: u16,
-    stop_timeouts: u16,
-    events: &[u8; 10],
-    pos: Option<&PlayPosition>,
-    song_ms: u32,
-    dur_ms: u32,
-) {
-    let x = 10;
-    // Where the description panel's text used to start; the overlay keeps
-    // the spot now that the panel spans the band above it too.
-    let mut y = 102;
-    let mut buf = [0u8; 56];
-    let emit = |small: &FontAtlas, y: &mut i16, buf: &[u8], n: usize| {
-        // SAFETY: every byte written above is ASCII.
-        small.draw_text(
-            x,
-            *y,
-            unsafe { core::str::from_utf8_unchecked(&buf[..n]) },
-            LABEL,
-        );
-        *y += 9;
-    };
-
-    let mut n = put_str(&mut buf, 0, "REQ ");
-    n = put_dec(&mut buf, n, requested_track as u32);
-    n = put_str(&mut buf, n, " STEP ");
-    n = put_dec(&mut buf, n, step as u32);
-    n = put_str(&mut buf, n, " ARM ");
-    n = put_dec(&mut buf, n, armed as u32);
-    n = put_str(&mut buf, n, " IDLE ");
-    n = put_dec(&mut buf, n, idle_polls as u32);
-    buf[n] = b'/';
-    n = put_dec(&mut buf, n + 1, CDDA_IDLE_POLLS_TO_ADVANCE as u32);
-    n = put_str(&mut buf, n, " HSK ");
-    n = put_dec(&mut buf, n, hsk_ticks);
-    emit(small, &mut y, &buf, n);
-
-    let mut n = put_str(&mut buf, 0, "STAT ");
-    for (i, s) in stat_hist.iter().enumerate() {
-        n = put_hex2(&mut buf, n, *s);
-        if i < stat_hist.len() - 1 {
-            buf[n] = b' ';
-            n += 1;
-        }
-    }
-    emit(small, &mut y, &buf, n);
-
-    let mut n = put_str(&mut buf, 0, "ADV IDLE ");
-    n = put_dec(&mut buf, n, adv_idle as u32);
-    n = put_str(&mut buf, n, " BTN ");
-    n = put_dec(&mut buf, n, adv_btn as u32);
-    n = put_str(&mut buf, n, " STALL ");
-    n = put_dec(&mut buf, n, stalls as u32);
-    n = put_str(&mut buf, n, " STTO ");
-    n = put_dec(&mut buf, n, stat_timeouts as u32);
-    n = put_str(&mut buf, n, " SPTO ");
-    n = put_dec(&mut buf, n, stop_timeouts as u32);
-    emit(small, &mut y, &buf, n);
-
-    // Where the drive says its head is (GetlocP), and where the watchdog
-    // thinks the song is against its known length. "POS ?" until the
-    // first successful position read.
-    let put_msf = |buf: &mut [u8; 56], at: usize, m: u8, s: u8, f: u8| {
-        let mut n = put_dec(buf, at, m as u32);
-        buf[n] = b':';
-        n = put_dec(buf, n + 1, s as u32);
-        buf[n] = b':';
-        put_dec(buf, n + 1, f as u32)
-    };
-    let mut n = put_str(&mut buf, 0, "POS ");
-    match pos {
-        Some(p) => {
-            buf[n] = b'T';
-            n = put_dec(&mut buf, n + 1, p.track as u32);
-            buf[n] = b' ';
-            buf[n + 1] = b'I';
-            n = put_dec(&mut buf, n + 2, p.index as u32);
-            buf[n] = b' ';
-            buf[n + 1] = b'R';
-            n = put_msf(
-                &mut buf,
-                n + 2,
-                p.relative_min,
-                p.relative_sec,
-                p.relative_frame,
-            );
-            buf[n] = b' ';
-            buf[n + 1] = b'A';
-            n = put_msf(
-                &mut buf,
-                n + 2,
-                p.absolute_min,
-                p.absolute_sec,
-                p.absolute_frame,
-            );
-        }
-        None => n = put_str(&mut buf, n, "?"),
-    }
-    n = put_str(&mut buf, n, " MS ");
-    n = put_dec(&mut buf, n, song_ms);
-    buf[n] = b'/';
-    n = put_dec(&mut buf, n + 1, dur_ms);
-    emit(small, &mut y, &buf, n);
-
-    let mut n = put_str(&mut buf, 0, "EV ");
-    for ev in events {
-        let cause = if ev & 0x80 != 0 {
-            b'I'
-        } else if ev & 0x40 != 0 {
-            b'B'
-        } else if ev & 0x20 != 0 {
-            b'S' // watchdog same-track restart
-        } else {
-            b'-'
-        };
-        buf[n] = cause;
-        buf[n + 1] = b'0' + (ev & 0x0F);
-        buf[n + 2] = b' ';
-        n += 3;
-    }
-    emit(small, &mut y, &buf, n);
 }
 
 fn draw_game_cards(
@@ -1092,109 +665,13 @@ fn render_links(font: &FontAtlas, icons: &paint::Icons) {
     }
 }
 
-/// Jukebox readout: what is playing and a level meter driven by the cooked
-/// spectrum. Shoulder track controls remain discoverable in the label.
-fn draw_music_panel(
-    font: &FontAtlas,
-    header: &Header,
-    track: u8,
-    beat: &carousel::Beat,
-    muted: bool,
-    loading: bool,
-    levels: Option<&[u8]>,
-) {
-    // The off slot past the last track: say so where the title would be,
-    // and keep the one control that gets the music back on screen.
-    if muted {
-        font.draw_text(MUSIC_X, MUSIC_TOP, "JUKEBOX | L1/R1", NOW_PLAYING);
-        font.draw_text(MUSIC_X, TRACK_TOP, "OFF", TRACK_NAME);
-        return;
-    }
-    let title = header.title(track as usize);
-    if title.is_empty() {
-        // The standalone collection owns no menu track: Goncharov belongs to
-        // Magikarp Pong and starts only after that game launches. Keep the
-        // jukebox informative without pretending audio is already playing.
-        font.draw_text(MUSIC_X, MUSIC_TOP, "CDDA IN MAGIKARP", NOW_PLAYING);
-        font.draw_text(MUSIC_X, TRACK_TOP, "GONCHAROV", TRACK_NAME);
-        paint::level_meter_beat(METER_X, METER_BASE, 72);
-        return;
-    }
-    // All of it down the header's left edge, in reading order.
-    if loading {
-        // The drive takes a moment to pick a track up, and a menu that just
-        // goes quiet reads as broken. Say what it is doing, where the label
-        // that it is playing would be.
-        font.draw_text(MUSIC_X, MUSIC_TOP, "JUKEBOX LOADING", NOW_PLAYING);
-        font.draw_text(MUSIC_X, TRACK_TOP, title, TRACK_NAME);
-        return;
-    }
-    font.draw_text(MUSIC_X, MUSIC_TOP, "JUKEBOX | L1/R1", NOW_PLAYING);
-    // The title brightens on the beat, so the words themselves keep time.
-    let lift = beat.pulse / 4;
-    let tint = (
-        TRACK_NAME.0.saturating_add(lift),
-        TRACK_NAME.1.saturating_add(lift),
-        TRACK_NAME.2.saturating_add(lift),
-    );
-    font.draw_text(MUSIC_X, TRACK_TOP, title, tint);
-    match levels {
-        Some(levels) => paint::level_meter(METER_X, METER_BASE, levels),
-        // No analysis for this track: keep time off the beat instead of
-        // leaving a dead space where the meter should be.
-        None => paint::level_meter_beat(METER_X, METER_BASE, beat.pulse),
-    }
-}
-
-/// Read the level-meter data for every menu track. Returns how many frames
-/// landed in the buffer, which is 0 when the disc carries none or when it
-/// carries more than there is room for.
-fn read_spectrum(header: Option<&Header>) -> u32 {
-    let Some(header) = header else { return 0 };
-    if header.spectrum_lba == 0 {
-        return 0;
-    }
-    let total: u32 = header.spectrum_frames.iter().sum();
-    let bytes = total as usize * disc_toc::SPECTRUM_BANDS;
-    let sectors = bytes.div_ceil(SECTOR_WORDS * 4);
-    if sectors > SPECTRUM_MAX_SECTORS {
-        tty::println("launcher: spectrum too large for the buffer, meter off");
-        return 0;
-    }
-    // SAFETY: single-threaded, polled; only `main` reaches these statics.
-    let reader = unsafe { &mut *core::ptr::addr_of_mut!(READER) };
-    let buffer = unsafe { &mut *core::ptr::addr_of_mut!(SPECTRUM) };
-
-    let mut ok = unsafe { reader.prepare() && reader.start_read(header.spectrum_lba) };
-    for chunk in buffer.chunks_exact_mut(SECTOR_WORDS).take(sectors) {
-        let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
-        ok = ok && unsafe { reader.read_sector(slot) };
-    }
-    unsafe { reader.stop() };
-    if ok {
-        total
-    } else {
-        0
-    }
-}
-
-/// The band levels to draw right now, or `None` when this track has no
-/// analysis on the disc.
-fn spectrum_frame(header: &Header, track: u8, song_ms: u32, loaded_frames: u32) -> Option<&[u8]> {
-    if loaded_frames == 0 {
-        return None;
-    }
-    let (offset, frames) = header.spectrum_span(track as usize)?;
-    let frame = song_ms * disc_toc::SPECTRUM_FRAME_RATE / 1000;
-    // Hold the last frame rather than wrapping: the clock can run a little
-    // past the end of a track while the drive notices it has finished.
-    let at = (offset + frame.min(frames.saturating_sub(1))) as usize;
-    let start = at * disc_toc::SPECTRUM_BANDS;
-    // SAFETY: as `read_spectrum`; read-only here.
-    let buffer = unsafe { &*core::ptr::addr_of!(SPECTRUM) };
-    let bytes =
-        unsafe { core::slice::from_raw_parts(buffer.as_ptr() as *const u8, buffer.len() * 4) };
-    bytes.get(start..start + disc_toc::SPECTRUM_BANDS)
+/// Jukebox readout. The standalone collection owns no menu track: Goncharov
+/// belongs to Magikarp Pong and starts only after that game launches, so the
+/// strip says where the music is and keeps the meter moving on its own.
+fn draw_music_panel(font: &FontAtlas) {
+    font.draw_text(MUSIC_X, MUSIC_TOP, "MUSIC IN MAGIKARP", NOW_PLAYING);
+    font.draw_text(MUSIC_X, TRACK_TOP, "GONCHAROV", TRACK_NAME);
+    paint::level_meter_beat(METER_X, METER_BASE, 72);
 }
 
 /// Read the table of contents. `None` if the disc has none.
@@ -1262,14 +739,8 @@ fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
     tty::println("launcher: chain-loading");
 
     // Let the GPU finish before the blob resets it out from under whatever is
-    // still on screen, and get the drive off CD-DA before the blob starts
-    // reading sectors with it.
+    // still on screen.
     gpu::draw_sync();
-    // Stop only gets ACCEPTED promptly; on silicon the drive then spins
-    // down for a good fraction of a second, and chain-load reads issued
-    // into that window fail (the debug burn's stage-1 prepare panel). The
-    // SDK helper waits, bounded, until the drive is genuinely quiet.
-    let _ = cdrom::stop_and_settle(CDDA_SPINS, 240);
 
     // SAFETY: `LOADER_BASE` is above every game's payload (mkdisc enforces
     // that) and below the stack, so nothing live is being overwritten. The

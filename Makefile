@@ -28,19 +28,39 @@ CARD_PREVIEW := $(BUILD)/cards/arcade-cards.png
 CARD_STAMP := $(BUILD)/cards/.cooked
 CARD_SOURCES := assets/shots/breakout.png assets/shots/invaders.png assets/shots/pong.png
 
-.PHONY: help psoxide loader launcher games mkdisc shots cards disc check run clean
+# Goncharov, packed as XA (see arcade-assets/audio/README.md). The file and the
+# table the game compiles in are committed; `make music` re-authors them.
+MUSIC_DIR := $(ROOT)/arcade-assets/audio/xa
+MUSIC_XA := $(MUSIC_DIR)/MUSIC1.XA
+SPECTRUM_BIN := $(ROOT)/games/magikarp-pong/assets/goncharov_spectrum_16x30hz.bin
+
+.PHONY: help psoxide loader launcher games mkdisc shots cards music disc check run clean
 
 help:
 	@echo "make disc   - build the three games and standalone PSoXide Arcade disc"
 	@echo "make check  - run host tests and build the full disc"
 	@echo "make run    - boot the standalone collection in the PSoXide frontend"
 
+# components.lock.json pins the SDK, editor/engine and emulator revisions.
+# psoxide-components (built from the SDK's tools/psoxide-link) imports them
+# into .psoxide so the path dependencies and the linker script resolve; an
+# unchanged lock is verified against its receipt and not fetched again. The
+# tool is installed once per revision under target/. COMPONENTS_REV is the
+# lock's SDK revision (the psoxide-components binary first exists at e6ec267).
+# PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
+COMPONENTS_REV := e6ec267ebdc7c18e54a0cc8059ae66b5f13db507
+COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
+HAZARD_SCAN := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-scan --
+
 psoxide:
 	@if [ -n "$(PSOXIDE_FROM)" ]; then \
 		cargo run -q --manifest-path "$(PSOXIDE_FROM)/tools/psoxide-link/Cargo.toml" -- \
 			--from "$(PSOXIDE_FROM)" --into "$(PSOXIDE)"; \
 	else \
-		python3 $(ROOT)/tools/bootstrap-components.py --root $(PSOXIDE) --lock $(ROOT)/components.lock.json; \
+		grep -q '$(COMPONENTS_REV)' "$(ROOT)/components.lock.json" || { echo "COMPONENTS_REV is not the lock's SDK revision"; exit 1; }; \
+		[ -x "$(COMPONENTS)/bin/psoxide-components" ] || cargo install -q --locked \
+			--git https://github.com/EBonura/PSoXide --rev $(COMPONENTS_REV) --root "$(COMPONENTS)" psoxide-link; \
+		"$(COMPONENTS)/bin/psoxide-components" --root "$(PSOXIDE)" --lock "$(ROOT)/components.lock.json"; \
 	fi
 
 loader: psoxide
@@ -77,13 +97,13 @@ $(BUILD)/shots/%.shot: assets/shots/%.png tools/cook-shots.py
 shots: $(SHOT_FILES)
 
 disc: launcher games mkdisc shots
-	@for exe in $(LOADER_BLOB) $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do python3 $(PSOXIDE)/tools/hazard_scan.py "$$exe" || exit 1; done
+	@for exe in $(LOADER_BLOB) $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do $(HAZARD_SCAN) "$$exe" || exit 1; done
 	@mkdir -p $(DIST)
 	$(MKDISC) --launcher $(LAUNCHER_EXE) --out $(DIST)/psoxide-arcade.bin --volume PSXARCADE \
 		--game "BREAKOUT=$(BREAKOUT_EXE)" \
 		--game "SPACE INVADERS=$(INVADERS_EXE)" \
 		--game "MAGIKAAAAARP PONG=$(MAGIKARP_EXE)" \
-		--program-cdda "MAGIKAAAAARP PONG=$(ROOT)/arcade-assets/audio/goncharov.cdda" \
+		--xa $(MUSIC_XA) \
 		--shot "BREAKOUT=$(BUILD)/shots/breakout.shot" \
 		--shot "BREAKOUT=$(BUILD)/shots/breakout2.shot" \
 		--shot "SPACE INVADERS=$(BUILD)/shots/invaders.shot" \
@@ -95,7 +115,18 @@ disc: launcher games mkdisc shots
 		--version-of "MAGIKAAAAARP PONG=0.1.0" \
 		--describe "BREAKOUT=A complete Breakout clone with responsive controls, collision, sound, scoring and a persistent high score.|Un clone completo di Breakout con controlli reattivi, collisioni, audio, punti e record persistente." \
 		--describe "SPACE INVADERS=A complete Space Invaders clone with marching formations, shields, enemy fire, scoring and three difficulty levels.|Un clone completo di Space Invaders con formazioni, scudi, fuoco nemico, punti e tre livelli di difficolta." \
-		--describe "MAGIKAAAAARP PONG=Pong with live CD audio and spectrum bars. Goncharov by magikAAAAArp.|Pong con audio CD e barre dello spettro. Goncharov dei magikAAAAArp."
+		--describe "MAGIKAAAAARP PONG=Pong with XA music and spectrum bars. Goncharov by magikAAAAArp.|Pong con musica XA e barre dello spettro. Goncharov dei magikAAAAArp."
+
+# Re-author the music from the Goncharov WAV (44.1 kHz stereo, 16-bit):
+#   make music GONCHAROV_WAV=/path/goncharov.wav XA_COOK=/path/psx-audio-cook
+# XA_COOK is a psx-audio-cook with `xa-pack` (SDK branch
+# feat/shared-xa-encoder-2026-10-15, 4113960f; the pinned SDK does not have it).
+# The spectrum table is baked from the same WAV by psoxide-dev.
+music: psoxide
+	@test -f "$(GONCHAROV_WAV)" -a -x "$(XA_COOK)" || { echo "music: set GONCHAROV_WAV (the song) and XA_COOK (a psx-audio-cook with xa-pack)"; exit 1; }
+	$(XA_COOK) xa-pack "$(MUSIC_DIR)" MUSIC "$(GONCHAROV_WAV)" --manifest "$(MUSIC_DIR)/music.json" --rust "$(MUSIC_DIR)/songs.rs"
+	cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-dev --bin psoxide-dev -- \
+		bake-spectrum "$(GONCHAROV_WAV)" -o "$(SPECTRUM_BIN)" --fps 30 --bands 16
 
 check: psoxide
 	cargo test --manifest-path .psoxide/engine/Cargo.toml -p psx-disc-toc

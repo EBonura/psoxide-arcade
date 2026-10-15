@@ -27,6 +27,7 @@ lto = true
 [dependencies]
 psx-asset  = { path = "../../.psoxide/sdk/crates/psx-asset" }
 psx-engine = { path = "../../.psoxide/engine/crates/psx-engine", features = ["boot-trace"] }
+psx-fmv    = { path = "../../.psoxide/sdk/crates/psx-fmv" }
 psx-font   = { path = "../../.psoxide/sdk/crates/psx-font" }
 psx-gpu    = { path = "../../.psoxide/sdk/crates/psx-gpu" }
 psx-io     = { path = "../../.psoxide/sdk/crates/psx-io" }

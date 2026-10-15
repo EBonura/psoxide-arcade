@@ -3,26 +3,25 @@
   "components": {
     "sdk": {
       "repository": "EBonura/PSoXide",
-      "revision": "cc668b56b31c15fc5087d79c6ac554f80c363c15",
+      "revision": "e6ec267ebdc7c18e54a0cc8059ae66b5f13db507",
       "paths": [
         "sdk",
         "crates",
         "tools/mkisopsx",
         "tools/psoxide-link",
-        "tools/hazard_scan.py",
-        "tools/hazard_patch.py",
-        "tools/stack_guard.py",
+        "tools/psoxide-hazard",
         "tools/guest_symbol_gate.sh",
-        "tools/check_mfc0.py",
         "tools/sdk-examples.mk",
         "tools/psoxide-pgo"
       ]
     },
     "emulator": {
       "repository": "EBonura/PSoXide-emulator",
-      "revision": "3f391f2452bdb62ba057d6a740245dccfd716a8d",
+      "revision": "9e007839a3d722e71a80d9b651a51ddd11d0c8bb",
       "paths": [
         "emu/crates/emulator-core",
+        "emu/crates/psoxide-debug-ui",
+        "emu/crates/psoxide-jit",
         "emu/crates/psoxide-settings",
         "emu/crates/psoxide-validation",
         "emu/crates/psx-gpu-render"
@@ -30,7 +29,7 @@
     },
     "editor": {
       "repository": "EBonura/PSoXide-editor",
-      "revision": "4352b10af5fda2c80e5a687f44050c5bcebc16ec",
+      "revision": "9ad78b36884e5bbae3f409b92198f5090a348db8",
       "paths": [
         "Cargo.toml",
         "Cargo.lock",
@@ -41,6 +40,7 @@
         "editor/projects/default",
         "emu/crates/frontend",
         "tools/psoxide-dev",
+        "tools/psoxide-vmcook",
         "assets"
       ]
     }
