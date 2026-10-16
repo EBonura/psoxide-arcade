@@ -48,9 +48,13 @@ help:
 # tool is installed once per revision under target/. COMPONENTS_REV is the
 # lock's SDK revision (the psoxide-components binary first exists at e6ec267).
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
-COMPONENTS_REV := e6ec267ebdc7c18e54a0cc8059ae66b5f13db507
+COMPONENTS_REV := 5219afbe2ee84c8fedcae1dfab22488564083094
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
 HAZARD_SCAN := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-scan --
+# The SDK linker script leaves the flat file short of the sector boundary its
+# header claims; hazard-patch (with the link map) appends those zeros and
+# reroutes any load-delay hazard, so every EXE that goes on the disc passes it.
+HAZARD_PATCH := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-patch --
 
 psoxide:
 	@if [ -n "$(PSOXIDE_FROM)" ]; then \
@@ -80,12 +84,12 @@ launcher: loader cards
 	cd launcher && CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
-		RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
+		RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS)
 
 games: psoxide
-	cd games/breakout && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
-	cd games/invaders && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
-	cd games/magikarp-pong && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS)" cargo build $(PSX_FLAGS)
+	cd games/breakout && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
+	cd games/invaders && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
+	cd games/magikarp-pong && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
 
 mkdisc: psoxide
 	cd tools/mkdisc && cargo build --release
@@ -97,6 +101,7 @@ $(BUILD)/shots/%.shot: assets/shots/%.png tools/cook-shots.py
 shots: $(SHOT_FILES)
 
 disc: launcher games mkdisc shots
+	@for exe in $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do $(HAZARD_PATCH) "$$exe" --map "$${exe%.exe}.map" || exit 1; done
 	@for exe in $(LOADER_BLOB) $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do $(HAZARD_SCAN) "$$exe" || exit 1; done
 	@mkdir -p $(DIST)
 	$(MKDISC) --launcher $(LAUNCHER_EXE) --out $(DIST)/psoxide-arcade.bin --volume PSXARCADE \

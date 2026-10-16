@@ -35,10 +35,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "psx-cdstream"
+version = "0.1.0"
+dependencies = [
+ "psx-hw",
+ "psx-io",
+ "psx-rt",
+]
+
+[[package]]
+name = "psx-display"
+version = "0.1.0"
+dependencies = [
+ "psx-gpu",
+ "psx-hw",
+]
+
+[[package]]
 name = "psx-engine"
 version = "0.1.0"
 dependencies = [
  "psx-asset",
+ "psx-cdstream",
  "psx-font",
  "psx-gpu",
  "psx-gte",
@@ -165,15 +183,17 @@ dependencies = [
 name = "psx-settings"
 version = "0.1.0"
 dependencies = [
+ "psx-display",
  "psx-mc",
  "psx-pad",
 ]
 
 [[package]]
 name = "psx-sfx"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "psx-asset",
+ "psx-math",
  "psx-spu",
 ]
 
