@@ -121,9 +121,14 @@ impl Music {
         if !self.running {
             return 0;
         }
-        let ticks = tick.wrapping_sub(self.anchor_tick) as u64;
-        let ms = self.anchor_ms as u64 + ticks * 1000 / hz.max(1) as u64;
-        (ms as u32).min(self.duration_ms)
+        // Whole seconds of ticks plus the remainder, so no product leaves 32
+        // bits: floor(ticks * 1000 / hz) without a 64-bit divide.
+        let ticks = tick.wrapping_sub(self.anchor_tick);
+        let hz = hz.max(1);
+        let since = (ticks / hz)
+            .saturating_mul(1000)
+            .saturating_add((ticks % hz).saturating_mul(1000) / hz);
+        self.anchor_ms.saturating_add(since).min(self.duration_ms)
     }
 
     /// Once a tick: start the song, read the head, notice a loop, redo a start
