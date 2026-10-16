@@ -31,21 +31,15 @@ SECTIONS {
         *(.rodata .rodata.*);
         *(.data .data.*);
         *(.got);
-        . = ALIGN(4);
-    } > RAM
-
-    .bss (NOLOAD) : {
-        __bss_start = .;
+        /* Zero-initialised statics are carried in the blob as zero bytes:
+           nothing zeroes a .bss for it (the launcher copies the blob bytes
+           only), so a separate .bss would read whatever the previous program
+           left in RAM. The SDK's polled CD reader keeps one such word
+           (psx_io::irq::POLLING_KEEP). */
         *(.bss .bss.*);
         *(COMMON);
         . = ALIGN(4);
-        __bss_end = .;
     } > RAM
-
-    /* Nothing zeroes .bss for the blob (the launcher copies .text only),
-       so any static here would be silently garbage. Keep the blob
-       stack-only and let the link fail if that ever stops being true. */
-    ASSERT(__bss_end == __bss_start, "loader blob must have no .bss")
 
     /DISCARD/ : {
         *(.MIPS.abiflags)
