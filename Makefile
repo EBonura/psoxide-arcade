@@ -11,6 +11,11 @@ MKDISC := $(ROOT)/tools/mkdisc/target/release/mkdisc
 
 PSX_TARGET := mipsel-sony-psx
 PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem
+# A panic is a BREAK at the faulting instruction (-Cpanic=immediate-abort): core::fmt, the panic Location records and
+# their file names stay out of the image, and psx-rt's exception handler records Cause/EPC/BadVAddr
+# (__psx_rt_fault_*; `psoxide-size faults` reads them from a RAM dump). PSOXIDE_PANIC_MESSAGES=1 restores the
+# formatted panic.
+PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,-Zunstable-options -Cpanic=immediate-abort)
 LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
 
 LOADER_BLOB := $(OUT)/loader.exe
@@ -69,7 +74,7 @@ psoxide:
 
 loader: psoxide
 	cd loader && CARGO_TARGET_DIR=$(GUEST_BUILD) \
-		RUSTFLAGS="-Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
+		RUSTFLAGS="$(PANIC_RUSTFLAGS) -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
 		cargo build $(PSX_FLAGS)
 
 $(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
@@ -84,12 +89,12 @@ launcher: loader cards
 	cd launcher && CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
-		RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS)
+		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS)
 
 games: psoxide
-	cd games/breakout && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
-	cd games/invaders && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
-	cd games/magikarp-pong && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
+	cd games/breakout && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
+	cd games/invaders && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
+	cd games/magikarp-pong && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
 
 mkdisc: psoxide
 	cd tools/mkdisc && cargo build --release
