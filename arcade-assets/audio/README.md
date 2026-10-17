@@ -18,13 +18,15 @@ ffmpeg -f s16le -ar 44100 -ac 2 -i GONCHAROV.track02.cdda goncharov.wav
 make music GONCHAROV_WAV=goncharov.wav XA_COOK=/path/to/psx-audio-cook
 ```
 
-`XA_COOK` is a `psx-audio-cook` built with the `xa-pack` subcommand, which the
-pinned SDK does not have yet: SDK branch `feat/shared-xa-encoder-2026-10-15`
-(commit 0efbc5ef) carries it. This file was packed with a build of SDK
-27ed9a4f (`feat/xa-clock-resume-2026-10-15`), whose encoder core is the same
-(it adds only a 64-bit float WAV reader and a clipping warning). `make music`
-also bakes the spectrum table from the same WAV. The encoder scores the file at 40.3 dB
-(left) and 40.6 dB (right) SNR against the source.
+`XA_COOK` is a `psx-audio-cook` built with the `xa-pack` subcommand (on the SDK's
+main since 2026-10-16). This file was packed with a build of SDK 27ed9a4f, whose
+encoder core is the same, and re-packing from the editor copy of the track with
+the SDK at 5219afbe gives the same bytes (checked 2026-10-17: `MUSIC1.XA`,
+`music.json` and `songs.rs` identical). `make music` also bakes the spectrum
+table from the same WAV, and `make music-check` fails if any committed byte
+changes. A fresh clone and the disc build use the committed files and need
+neither the WAV nor the encoder. The encoder scores the file at 40.3 dB (left)
+and 40.6 dB (right) SNR against the source.
 
 The game reads the disc once, before the first note: the drive is busy while a
 song plays, so nothing else is read from the disc during the game.

@@ -124,14 +124,21 @@ disc: launcher games mkdisc shots
 
 # Re-author the music from the Goncharov WAV (44.1 kHz stereo, 16-bit):
 #   make music GONCHAROV_WAV=/path/goncharov.wav XA_COOK=/path/psx-audio-cook
-# XA_COOK is a psx-audio-cook with `xa-pack` (SDK branch
-# feat/shared-xa-encoder-2026-10-15, 4113960f; the pinned SDK does not have it).
+# XA_COOK is a psx-audio-cook with `xa-pack` (on the SDK's main since
+# 2026-10-16; a build of any later psx-audio-cook gives the same bytes).
 # The spectrum table is baked from the same WAV by psoxide-dev.
+# `make music-check` (same arguments) cooks again and fails if any committed
+# byte changes. A fresh clone and the disc build use the committed files and
+# need neither the WAV nor XA_COOK.
 music: psoxide
 	@test -f "$(GONCHAROV_WAV)" -a -x "$(XA_COOK)" || { echo "music: set GONCHAROV_WAV (the song) and XA_COOK (a psx-audio-cook with xa-pack)"; exit 1; }
 	$(XA_COOK) xa-pack "$(MUSIC_DIR)" MUSIC "$(GONCHAROV_WAV)" --manifest "$(MUSIC_DIR)/music.json" --rust "$(MUSIC_DIR)/songs.rs"
 	cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-dev --bin psoxide-dev -- \
 		bake-spectrum "$(GONCHAROV_WAV)" -o "$(SPECTRUM_BIN)" --fps 30 --bands 16
+
+.PHONY: music-check
+music-check: music
+	@git diff --exit-code -- "$(MUSIC_DIR)" "$(SPECTRUM_BIN)" && echo "music-check: the cook is byte-identical to the committed music"
 
 check: psoxide
 	cargo test --manifest-path .psoxide/engine/Cargo.toml -p psx-disc-toc
