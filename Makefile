@@ -53,7 +53,7 @@ help:
 # tool is installed once per revision under target/. COMPONENTS_REV is the
 # lock's SDK revision (the psoxide-components binary first exists at e6ec267).
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
-COMPONENTS_REV := b5365b1863fd0d3081602e65f3cfe49826d4e99e
+COMPONENTS_REV := 3cf22179d8798e8ce5899743fdcf222fc9486a8a
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
 HAZARD_SCAN := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-scan --
 # The SDK linker script leaves the flat file short of the sector boundary its
