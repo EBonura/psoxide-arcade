@@ -26,7 +26,8 @@
 //! ```
 //!
 //! `mkdisc install --cue <cue> --games-dir <dir>` copies a finished disc into a games
-//! library as `PSoXide Arcade (psoxide-arcade)`, replacing the previous install in place.
+//! library as `PSoXide Arcade (psoxide-arcade)`, replacing the previous install in place and
+//! writing its provenance record beside it (see the `psx-library` crate).
 //!
 //! `--game` embeds a bare PSX-EXE, for programs that never touch the disc
 //! after boot. `--image` takes a whole `.cue`, for programs that stream data
@@ -34,7 +35,6 @@
 //! `--xa`). `NAME` is what the menu shows; `=` splits it from the path.
 
 mod cue;
-mod library;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -512,6 +512,8 @@ fn read_xa_file(path: &Path) -> Result<(String, Vec<u8>), String> {
 
 /// Library name of the standalone disc: `Game Name (repo)`.
 const LIBRARY_NAME: &str = "PSoXide Arcade (psoxide-arcade)";
+/// The GitHub repository recorded in the provenance.
+const LIBRARY_REPOSITORY: &str = "EBonura/psoxide-arcade";
 /// The library name before 2026-10-23 (flat `psoxide-arcade.bin`); an install removes a stale pair.
 const LEGACY_LIBRARY_STEM: &str = "psoxide-arcade";
 
@@ -530,9 +532,19 @@ fn install(mut it: impl Iterator<Item = String>) -> Result<(), String> {
     }
     let cue = cue.ok_or("install needs --cue <the disc's cue>")?;
     let games_dir = games_dir.ok_or("install needs --games-dir <dir> (or GAMES_DIR)")?;
-    let installed = library::install(&cue, &games_dir, LIBRARY_NAME, LEGACY_LIBRARY_STEM)
+    // The source recorded in the provenance is the checkout `mkdisc` runs in (the repository
+    // root for `make install`).
+    let source = psx_library::Source::from_git(Path::new("."), LIBRARY_REPOSITORY)
         .map_err(|error| error.to_string())?;
-    println!("INSTALLED -> {}", installed.display());
+    let installed = psx_library::install(
+        &psx_library::Request::new(&cue, &games_dir, LIBRARY_NAME, source)
+            .with_legacy_stem(LEGACY_LIBRARY_STEM),
+    )
+    .map_err(|error| error.to_string())?;
+    for path in &installed.removed {
+        println!("REMOVED stale {}", path.display());
+    }
+    println!("INSTALLED -> {}", installed.cue.display());
     Ok(())
 }
 

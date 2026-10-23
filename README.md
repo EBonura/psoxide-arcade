@@ -61,7 +61,9 @@ To copy the disc into a PSoXide games library, run `make install GAMES_DIR="DIR"
 `Game Name (repo)`) and replaces the previous install in place; a leftover
 `psoxide-arcade.bin`/`.cue` pair from before the rename is removed if it is
 identical to or older than the new disc, and a newer, different one stops the
-install.
+install. It also writes `PSoXide Arcade (psoxide-arcade).provenance.json` (bin and cue
+digests, the source commit, the install time and the digest of the bin it replaced) through
+the shared `psx-library` crate.
 
 Use `PSOXIDE_FROM=/path/to/PSoXide-editor` with an already bootstrapped editor
 checkout to build against split SDK/engine sources while keeping the standalone
