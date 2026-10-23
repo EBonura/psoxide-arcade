@@ -39,11 +39,12 @@ MUSIC_DIR := $(ROOT)/arcade-assets/audio/xa
 MUSIC_XA := $(MUSIC_DIR)/MUSIC1.XA
 SPECTRUM_BIN := $(ROOT)/games/magikarp-pong/assets/goncharov_spectrum_16x30hz.bin
 
-.PHONY: help psoxide loader launcher games mkdisc shots cards music disc check run clean
+.PHONY: help psoxide loader launcher games mkdisc shots cards music disc install check run clean
 
 help:
 	@echo "make disc   - build the three games and standalone PSoXide Arcade disc"
 	@echo "make check  - run host tests and build the full disc"
+	@echo "make install GAMES_DIR=DIR - build the disc and install it into DIR as 'PSoXide Arcade (psoxide-arcade)'"
 	@echo "make run    - boot the standalone collection in the PSoXide frontend"
 
 # components.lock.json pins the SDK, editor/engine and emulator revisions.
@@ -126,6 +127,13 @@ disc: launcher games mkdisc shots
 		--describe "BREAKOUT=A complete Breakout clone with responsive controls, collision, sound, scoring and a persistent high score.|Un clone completo di Breakout con controlli reattivi, collisioni, audio, punti e record persistente." \
 		--describe "SPACE INVADERS=A complete Space Invaders clone with marching formations, shields, enemy fire, scoring and three difficulty levels.|Un clone completo di Space Invaders con formazioni, scudi, fuoco nemico, punti e tre livelli di difficolta." \
 		--describe "MAGIKAAAAARP PONG=Pong with XA music and spectrum bars. Goncharov by magikAAAAArp.|Pong con musica XA e barre dello spettro. Goncharov dei magikAAAAArp."
+
+# Install into a PSoXide games library under its library name, replacing the previous install in
+# place. Quoted: the library name has spaces and parentheses. `mkdisc install --cue dist/psoxide-arcade.cue
+# --games-dir DIR` does the same without rebuilding.
+install: disc
+	@test -n "$(strip $(GAMES_DIR))" || { echo "Set GAMES_DIR to the games library directory."; exit 1; }
+	$(MKDISC) install --cue "$(DISC)" --games-dir "$(GAMES_DIR)"
 
 # Re-author the music from the Goncharov WAV (44.1 kHz stereo, 16-bit):
 #   make music GONCHAROV_WAV=/path/goncharov.wav XA_COOK=/path/psx-audio-cook

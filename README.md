@@ -54,6 +54,15 @@ the separate PSoXide emulator:
 /path/to/PSoXide-emulator/target/release/frontend launch --path dist/psoxide-arcade.cue
 ```
 
+To copy the disc into a PSoXide games library, run `make install GAMES_DIR="DIR"`
+(or `tools/mkdisc/target/release/mkdisc install --cue dist/psoxide-arcade.cue
+--games-dir DIR` for the disc you already built). The library copy is named
+`PSoXide Arcade (psoxide-arcade).bin` and `.cue` (library names are
+`Game Name (repo)`) and replaces the previous install in place; a leftover
+`psoxide-arcade.bin`/`.cue` pair from before the rename is removed if it is
+identical to or older than the new disc, and a newer, different one stops the
+install.
+
 Use `PSOXIDE_FROM=/path/to/PSoXide-editor` with an already bootstrapped editor
 checkout to build against split SDK/engine sources while keeping the standalone
 pin unchanged. `make run FRONTEND=/path/to/frontend` builds the disc and

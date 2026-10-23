@@ -25,12 +25,16 @@
 //!        [--game NAME=<exe>] [--image NAME=<cue>] ...
 //! ```
 //!
+//! `mkdisc install --cue <cue> --games-dir <dir>` copies a finished disc into a games
+//! library as `PSoXide Arcade (psoxide-arcade)`, replacing the previous install in place.
+//!
 //! `--game` embeds a bare PSX-EXE, for programs that never touch the disc
 //! after boot. `--image` takes a whole `.cue`, for programs that stream data
 //! (data only; the collection's music is XA files in the root directory, see
 //! `--xa`). `NAME` is what the menu shows; `=` splits it from the path.
 
 mod cue;
+mod library;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -206,7 +210,8 @@ fn parse_args() -> Result<Args, String> {
 
 fn print_usage() {
     println!(
-        "mkdisc --launcher <exe> --out <bin> [--volume ID]\n\
+        "mkdisc install --cue <cue> --games-dir <dir>   (copy a finished disc into the library)\n\
+         mkdisc --launcher <exe> --out <bin> [--volume ID]\n\
         \x20      [--game NAME=<exe>] [--image NAME=<cue>] [--xa <file.XA>] ...\n\n\
          --game        embeds a bare PSX-EXE (programs that never read the disc)\n\
          --image       places a whole game disc image (data track only)\n\
@@ -505,7 +510,38 @@ fn read_xa_file(path: &Path) -> Result<(String, Vec<u8>), String> {
     Ok((name.to_string(), bytes))
 }
 
+/// Library name of the standalone disc: `Game Name (repo)`.
+const LIBRARY_NAME: &str = "PSoXide Arcade (psoxide-arcade)";
+/// The library name before 2026-10-23 (flat `psoxide-arcade.bin`); an install removes a stale pair.
+const LEGACY_LIBRARY_STEM: &str = "psoxide-arcade";
+
+/// `mkdisc install --cue <cue> --games-dir <dir>`: copy a finished disc into the games library.
+fn install(mut it: impl Iterator<Item = String>) -> Result<(), String> {
+    let mut cue = None;
+    let mut games_dir = std::env::var_os("GAMES_DIR").map(PathBuf::from);
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--cue" => cue = Some(PathBuf::from(it.next().ok_or("--cue takes a path")?)),
+            "--games-dir" => {
+                games_dir = Some(PathBuf::from(it.next().ok_or("--games-dir takes a path")?));
+            }
+            other => return Err(format!("install: unknown argument {other:?}")),
+        }
+    }
+    let cue = cue.ok_or("install needs --cue <the disc's cue>")?;
+    let games_dir = games_dir.ok_or("install needs --games-dir <dir> (or GAMES_DIR)")?;
+    let installed = library::install(&cue, &games_dir, LIBRARY_NAME, LEGACY_LIBRARY_STEM)
+        .map_err(|error| error.to_string())?;
+    println!("INSTALLED -> {}", installed.display());
+    Ok(())
+}
+
 fn run() -> Result<(), String> {
+    let mut arguments = std::env::args().skip(1).peekable();
+    if arguments.peek().map(String::as_str) == Some("install") {
+        arguments.next();
+        return install(arguments);
+    }
     let args = parse_args()?;
 
     let launcher =
