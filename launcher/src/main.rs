@@ -23,14 +23,14 @@ use psx_font::{
     fonts::{BASIC, SPLEEN_5X8},
     FontAtlas,
 };
-use psx_gpu::{self as gpu, framebuf::FrameBuffer, Resolution, VideoMode};
+use psx_gpu::{self as gpu, display::Resolution, display::VideoMode, framebuf::FrameBuffer};
 use psx_io::disc_base;
 use psx_pack::cd::{SectorReader, SECTOR_WORDS};
 use psx_pad::{button, require_analog_port1, AnalogRequirement, ButtonState, PadMode, PadReader};
 use psx_rt::tty;
 use psx_sfx::{Bank, OneShot, Player};
 use psx_spu::{Adsr, Pitch, SpuAddr, Voice, Volume};
-use psx_vram::{Clut, TexDepth, Tpage};
+use psx_vram::{Clut, TextureDepth, TexturePage};
 
 /// The chain-load blob, linked at `LOADER_BASE` by `loader/loader.ld`.
 const LOADER_BLOB: &[u8] = include_bytes!(env!("LOADER_BLOB"));
@@ -54,17 +54,17 @@ const LOADER_LIMIT: usize = 32 * 1024;
 /// way Sony's libpad spaces them), so not every frame.
 const ANALOG_RECHECK_TICKS: u32 = 60;
 
-const FONT_TPAGE: Tpage = Tpage::new(320, 0, TexDepth::Bit4);
+const FONT_TPAGE: TexturePage = TexturePage::new(320, 0, TextureDepth::Bit4);
 const FONT_CLUT: Clut = Clut::new(320, 256);
 
 /// The header's own font: same eight-pixel height as BASIC but five wide, so
 /// the music column fits beside a centred mark instead of running under it.
-const SMALL_TPAGE: Tpage = Tpage::new(448, 0, TexDepth::Bit4);
+const SMALL_TPAGE: TexturePage = TexturePage::new(448, 0, TextureDepth::Bit4);
 const SMALL_CLUT: Clut = Clut::new(416, 256);
 
 /// The banner sits in its own 4bpp page, clear of both framebuffers and of
 /// the font. Tpage X must be a multiple of 64.
-const BANNER_TPAGE: Tpage = Tpage::new(384, 0, TexDepth::Bit4);
+const BANNER_TPAGE: TexturePage = TexturePage::new(384, 0, TextureDepth::Bit4);
 const BANNER_CLUT: Clut = Clut::new(400, 256);
 const BANNER_W: i16 = 120;
 const BANNER_H: i16 = 19;
@@ -88,7 +88,7 @@ static ICONS_CLUT_DATA: &[u8] = include_bytes!("../assets/icons.clut");
 /// Three always-resident 4bpp game thumbnails, packed into one texture page.
 /// Each owns its own sixteen-colour palette, so Breakout, Invaders and Pong
 /// retain their distinct original colours without runtime CLUT rewrites.
-const CARDS_TPAGE: Tpage = Tpage::new(512, 256, TexDepth::Bit4);
+const CARDS_TPAGE: TexturePage = TexturePage::new(512, 256, TextureDepth::Bit4);
 const CARDS_CLUTS: [Clut; 3] = [
     Clut::new(512, 508),
     Clut::new(528, 508),
@@ -751,7 +751,7 @@ fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
             LOADER_BASE as *mut u8,
             LOADER_BLOB.len(),
         );
-        psx_rt::cache::flush_i_cache();
+        psx_rt::cache::flush_instruction_cache();
         let blob: unsafe extern "C" fn(u32, u32, u32, u32) -> ! =
             core::mem::transmute(LOADER_BASE as usize);
         // The copied loader is its own linked image, so its SectorReader has

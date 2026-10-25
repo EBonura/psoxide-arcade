@@ -6,7 +6,7 @@
 use psx_gpu::framebuf::FrameBuffer;
 use psx_gpu::material::{BlendMode, TextureMaterial};
 use psx_gpu::{self as gpu};
-use psx_vram::{Clut, Color555, TexDepth, Tpage, VramRect};
+use psx_vram::{Clut, Color555, TextureDepth, TexturePage, VramRect};
 
 fn scale_rgb(c: (u8, u8, u8), t: u8) -> (u8, u8, u8) {
     (
@@ -50,7 +50,7 @@ pub fn level_meter_beat(x: i16, base_y: i16, pulse: u8) {
 /// `0x0000`, which the PlayStation treats as transparent: the starfield shows
 /// through the letterforms rather than the logo sitting in a black box.
 pub struct Banner {
-    tpage: Tpage,
+    tpage: TexturePage,
     clut: Clut,
     w: i16,
     h: i16,
@@ -60,7 +60,14 @@ impl Banner {
     /// Push the texture and its palette into VRAM. `tpage` must be 4bpp and
     /// clear of the framebuffer; the whole thing has to fit one page, since
     /// UVs are bytes.
-    pub fn upload(pixels: &[u8], palette: &[u8], w: i16, h: i16, tpage: Tpage, clut: Clut) -> Self {
+    pub fn upload(
+        pixels: &[u8],
+        palette: &[u8],
+        w: i16,
+        h: i16,
+        tpage: TexturePage,
+        clut: Clut,
+    ) -> Self {
         // Four texels a halfword, so a row is a quarter as wide in VRAM.
         let halfwords_per_row = (w as u16).div_ceil(4);
         psx_vram::upload_bytes(
@@ -81,8 +88,8 @@ impl Banner {
         gpu::draw_quad_textured(
             [(x, y), (x + w, y), (x, y + h), (x + w, y + h)],
             [(0, 0), (u1, 0), (0, v1), (u1, v1)],
-            self.clut.uv_clut_word(),
-            self.tpage.uv_tpage_word(0),
+            self.clut.uv_word(),
+            self.tpage.uv_word(0),
             // Neutral tint: 128 is "as the texture is" on this hardware.
             (128, 128, 128),
         );
@@ -95,7 +102,7 @@ impl Banner {
 /// box is twenty-odd characters wide and every real link overflows it. These
 /// carry the domain the text drops.
 pub struct Icons {
-    tpage: Tpage,
+    tpage: TexturePage,
     clut: Clut,
     /// Row of the page the strip starts at: it shares the banner's page and
     /// sits below the mark, so this is not zero.
@@ -113,7 +120,7 @@ impl Icons {
         palette: &[u8],
         w: i16,
         h: i16,
-        tpage: Tpage,
+        tpage: TexturePage,
         v: u8,
         clut: Clut,
         cell: i16,
@@ -150,7 +157,7 @@ impl Icons {
             s,
             s,
             ((slot * self.cell) as u8, self.v),
-            TextureMaterial::opaque(self.clut.uv_clut_word(), self.tpage.uv_tpage_word(0), tint),
+            TextureMaterial::opaque(self.clut.uv_word(), self.tpage.uv_word(0), tint),
         );
     }
 }
@@ -159,7 +166,7 @@ impl Icons {
 /// Separate CLUTs retain each game's palette while one upload keeps the whole
 /// selector resident for the life of the menu.
 pub struct ArcadeCards {
-    tpage: Tpage,
+    tpage: TexturePage,
     cluts: [Clut; 3],
     card_w: i16,
     card_h: i16,
@@ -171,7 +178,7 @@ impl ArcadeCards {
         palettes: &[u8],
         card_w: i16,
         card_h: i16,
-        tpage: Tpage,
+        tpage: TexturePage,
         cluts: [Clut; 3],
     ) -> Self {
         let strip_w = card_w * 3;
@@ -213,8 +220,8 @@ impl ArcadeCards {
                 (x + self.card_w, y + self.card_h),
             ],
             [(u0, 0), (u1, 0), (u0, v1), (u1, v1)],
-            self.cluts[slot].uv_clut_word(),
-            self.tpage.uv_tpage_word(0),
+            self.cluts[slot].uv_word(),
+            self.tpage.uv_word(0),
             (tint, tint, tint),
         );
     }
@@ -482,7 +489,7 @@ impl TextCache {
     /// glyph; the polygon path carries the page in a vertex instead and drew
     /// nothing here, including when pointed at the framebuffer itself.
     pub fn draw(&self, x: i16, y: i16) {
-        let tpage = Tpage::new(CACHE_X, CACHE_Y, TexDepth::Bit15);
+        let tpage = TexturePage::new(CACHE_X, CACHE_Y, TextureDepth::Bit15);
         gpu::draw_sprite_material(
             x,
             y,
@@ -492,7 +499,7 @@ impl TextCache {
             // Neutral tint: 128 is "as the texture is". A texel of
             // 0x0000 is transparent on this hardware, which is what
             // lets the panel show through around the letterforms.
-            TextureMaterial::opaque(0, tpage.uv_tpage_word(0), (128, 128, 128)),
+            TextureMaterial::opaque(0, tpage.uv_word(0), (128, 128, 128)),
         );
     }
 }
