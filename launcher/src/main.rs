@@ -107,7 +107,7 @@ const LINKS: [(i16, &str); 6] = [
     (0, "github.com/EBonura/PSoXide"),
     (1, "bonnie-studios.itch.io"),
     (2, "x.com/_bonniestudios"),
-    (3, "instagram.com/izzy88izzy"),
+    (3, "instagram.com/bonnie_studios_"),
     (4, "buymeacoffee.com/bonniestudios"),
     (5, "youtube.com/@magikAAAAArp/videos"),
 ];
