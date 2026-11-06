@@ -640,6 +640,8 @@ impl DigitChar {
 
 #[no_mangle]
 fn main() -> ! {
+    // The SDK caps presentation at 30 fps by default; the arcade games present every VBlank.
+    psx_rt::interrupts::set_min_flip_vblanks(1);
     let config = Config {
         clear_color: (6, 8, 24),
         ..Config::default()

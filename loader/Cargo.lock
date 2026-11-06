@@ -23,6 +23,7 @@ dependencies = [
  "psx-hw",
  "psx-io",
  "psx-pack",
+ "psx-rt",
 ]
 
 [[package]]
@@ -67,6 +68,14 @@ version = "0.1.0"
 name = "psx-pack"
 version = "0.1.0"
 dependencies = [
+ "psx-io",
+]
+
+[[package]]
+name = "psx-rt"
+version = "0.1.0"
+dependencies = [
+ "psx-hw",
  "psx-io",
 ]
 
