@@ -11,8 +11,8 @@ selector and each game are separate PS-X EXE programs, so only the selected
 game occupies runtime memory.
 
 The repository was extracted with filtered history from PSoXide. The
-[SDK](https://github.com/EBonura/PSoXide),
-[engine](https://github.com/EBonura/PSoXide-editor/tree/main/engine) and
+[SDK](https://github.com/EBonura/PSoXide) (which holds the
+[engine](https://github.com/EBonura/PSoXide/tree/main/engine)) and
 [emulator](https://github.com/EBonura/PSoXide-emulator) have separate
 repositories; the three games and their collection release live here.
 `components.lock.json` pins the exact revisions a standalone build uses, while
@@ -65,8 +65,8 @@ install. It also writes `PSoXide Arcade (psoxide-arcade).provenance.json` (bin a
 digests, the source commit, the install time and the digest of the bin it replaced) through
 the shared `psx-library` crate.
 
-Use `PSOXIDE_FROM=/path/to/PSoXide-editor` with an already bootstrapped editor
-checkout to build against split SDK/engine sources while keeping the standalone
+Use `PSOXIDE_FROM=/path/to/PSoXide` with an SDK checkout
+to build against local SDK/engine sources while keeping the standalone
 pin unchanged. `make run FRONTEND=/path/to/frontend` builds the disc and
 then runs the same `launch` command.
 
