@@ -39,7 +39,7 @@ MUSIC_DIR := $(ROOT)/arcade-assets/audio/xa
 MUSIC_XA := $(MUSIC_DIR)/MUSIC1.XA
 SPECTRUM_BIN := $(ROOT)/games/magikarp-pong/assets/goncharov_spectrum_16x30hz.bin
 
-.PHONY: help psoxide loader launcher games mkdisc shots cards music disc install check run clean
+.PHONY: help psoxide repro-rustc loader launcher games mkdisc shots cards music disc install check run clean
 
 help:
 	@echo "make disc   - build the three games and standalone PSoXide Arcade disc"
@@ -56,6 +56,11 @@ help:
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
 COMPONENTS_REV := d442e2b642f2aab18fb47230ff74cd7b892e6441
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
+# Guest builds run under the SDK's psoxide-rustc, so the checkout directory does
+# not reach the crate hashes: the same commit gives the same executables from
+# any directory (proved by the SDK's repro-gate).
+REPRO_RUSTC := $(PSOXIDE)/target/release/psoxide-rustc
+REPRO := RUSTC_WRAPPER=$(REPRO_RUSTC) PSOXIDE_REPRO_ROOT=$(ROOT)
 HAZARD_SCAN := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-scan --
 # The SDK linker script leaves the flat file short of the sector boundary its
 # header claims; hazard-patch (with the link map) appends those zeros and
@@ -73,8 +78,11 @@ psoxide:
 		"$(COMPONENTS)/bin/psoxide-components" --root "$(PSOXIDE)" --lock "$(ROOT)/components.lock.json"; \
 	fi
 
-loader: psoxide
-	cd loader && CARGO_TARGET_DIR=$(GUEST_BUILD) \
+repro-rustc: psoxide
+	cargo build -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-pgo --bin psoxide-rustc
+
+loader: repro-rustc
+	cd loader && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		RUSTFLAGS="$(PANIC_RUSTFLAGS) -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
 		cargo build $(PSX_FLAGS)
 
@@ -87,15 +95,15 @@ $(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
 cards: $(CARD_STAMP)
 
 launcher: loader cards
-	cd launcher && CARGO_TARGET_DIR=$(GUEST_BUILD) \
+	cd launcher && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
 		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS)
 
-games: psoxide
-	cd games/breakout && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
-	cd games/invaders && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
-	cd games/magikarp-pong && CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
+games: repro-rustc
+	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
+	cd games/invaders && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
+	cd games/magikarp-pong && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
 
 mkdisc: psoxide
 	cd tools/mkdisc && cargo build --release
