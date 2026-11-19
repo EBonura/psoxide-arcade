@@ -3,3 +3,4 @@
 id arcade
 front breakout.png
 back breakout.png invaders.png
+shots breakout.png breakout2.png invaders.png invaders2.png pong.png pong2.png
