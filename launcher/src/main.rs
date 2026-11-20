@@ -248,12 +248,13 @@ const SFX_BASE: SpuAddr = SpuAddr::new(0x1010);
 /// hundred times a minute should be. At 0.10 s it can also retrigger three
 /// times inside the window jump was still sounding in.
 static SFX_BROWSE: &[u8] =
-    include_bytes!("../../.psoxide/assets/audio/voxide-ui/psau/ui_click.psau");
+    psx_sfx::include_psau!("../../.psoxide/assets/audio/voxide-ui/psau/ui_click.psau");
 static SFX_SELECT: &[u8] =
-    include_bytes!("../../.psoxide/assets/audio/voxide-ui/psau/ui_confirm.psau");
+    psx_sfx::include_psau!("../../.psoxide/assets/audio/voxide-ui/psau/ui_confirm.psau");
 /// 0.56 s of rushing air, which is just under the 40 frames of warp the
 /// starfield accelerates through before the fade takes the screen.
-static SFX_LAUNCH: &[u8] = include_bytes!("../../.psoxide/assets/audio/freesfx/psau/swoosh.psau");
+static SFX_LAUNCH: &[u8] =
+    psx_sfx::include_psau!("../../.psoxide/assets/audio/freesfx/psau/swoosh.psau");
 
 /// Frames the launch fade takes. Long enough to read as deliberate, short
 /// enough that nobody waits for it.
@@ -331,13 +332,21 @@ fn main() {
     // OneShot defaults to default_tone. percussive self-fades in about 150 ms,
     // which suits the select chirp and would throw away most of a 0.25 s blip
     // or a 0.56 s swoosh.
-    let sfx_browse = OneShot::new(bank.upload(SFX_BROWSE), BROWSE_GAIN);
-    let sfx_select =
-        OneShot::new(bank.upload(SFX_SELECT), SELECT_GAIN).with_adsr(Adsr::percussive());
+    // A sample whose upload failed is never played (the SDK latches the fault; no retry).
+    let sfx_browse = bank
+        .upload(SFX_BROWSE)
+        .ok()
+        .map(|sample| OneShot::new(sample, BROWSE_GAIN));
+    let sfx_select = bank
+        .upload(SFX_SELECT)
+        .ok()
+        .map(|sample| OneShot::new(sample, SELECT_GAIN).with_adsr(Adsr::percussive()));
     // 0x1000 is unity; scaling it down stretches the sample over the warp.
-    let sfx_launch = OneShot::new(bank.upload(SFX_LAUNCH), LAUNCH_GAIN).with_pitch(Pitch::raw(
-        (0x1000 * LAUNCH_STRETCH_NUM / LAUNCH_STRETCH_DEN) as u16,
-    ));
+    let sfx_launch = bank.upload(SFX_LAUNCH).ok().map(|sample| {
+        OneShot::new(sample, LAUNCH_GAIN).with_pitch(Pitch::raw(
+            (0x1000 * LAUNCH_STRETCH_NUM / LAUNCH_STRETCH_DEN) as u16,
+        ))
+    });
     let mut sfx: Player<3> = Player::new([VOICE_BROWSE, VOICE_SELECT, VOICE_LAUNCH], TICKS_HZ);
     /// Slots into `sfx`, in the order its voices were handed over.
     const SFX_BROWSE_SLOT: usize = 0;
@@ -413,7 +422,9 @@ fn main() {
                         count = visible_entries(&all_entries, all_count, unlocked, &mut entries);
                         selected = 0;
                         code_cross = true;
-                        sfx.play_on(SFX_SELECT_SLOT, &sfx_select, tick);
+                        if let Some(shot) = &sfx_select {
+                            sfx.play_on(SFX_SELECT_SLOT, shot, tick);
+                        }
                     }
                 }
             }
@@ -430,7 +441,9 @@ fn main() {
                 let browse = pressed(button::RIGHT) as i32 - pressed(button::LEFT) as i32;
                 if browse != 0 {
                     selected += browse;
-                    sfx.play_on(SFX_BROWSE_SLOT, &sfx_browse, tick);
+                    if let Some(shot) = &sfx_browse {
+                        sfx.play_on(SFX_BROWSE_SLOT, shot, tick);
+                    }
                 }
                 if (pressed(button::CROSS) && !code_cross) || pressed(button::START) {
                     let index = selected.rem_euclid(count as i32) as usize;
@@ -440,8 +453,12 @@ fn main() {
                         // answers the button, the swoosh carries the warp.
                         // The swoosh's cutoff stretches with its pitch on its
                         // own now, which this used to work out by hand.
-                        sfx.play_on(SFX_SELECT_SLOT, &sfx_select, tick);
-                        sfx.play_on(SFX_LAUNCH_SLOT, &sfx_launch, tick);
+                        if let Some(shot) = &sfx_select {
+                            sfx.play_on(SFX_SELECT_SLOT, shot, tick);
+                        }
+                        if let Some(shot) = &sfx_launch {
+                            sfx.play_on(SFX_LAUNCH_SLOT, shot, tick);
+                        }
                         launch_index = index;
                         warp = 0;
                     }

@@ -96,22 +96,22 @@ const VOICE_LOSE: Voice = Voice::V3;
 const SFX_BANK: [sfx::Sample<'static>; 4] = [
     sfx::Sample {
         voice: VOICE_WALL,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
         volume: Volume::linear(1, 6),
     },
     sfx::Sample {
         voice: VOICE_PADDLE,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_punch.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/hit_punch.psau"),
         volume: Volume::linear(1, 5),
     },
     sfx::Sample {
         voice: VOICE_BRICK,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_metal.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/hit_metal.psau"),
         volume: Volume::linear(1, 7),
     },
     sfx::Sample {
         voice: VOICE_LOSE,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/explosion_short.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/explosion_short.psau"),
         volume: Volume::linear(1, 7),
     },
 ];
@@ -351,7 +351,11 @@ static mut BG_QUAD: QuadGouraud = QuadGouraud {
 impl Scene for Breakout {
     fn init(&mut self, _ctx: &mut Ctx) {
         spu::init();
-        sfx::upload_samples(SPU_SAMPLE_BASE, &SFX_BANK);
+        // A sample whose upload failed is never played: its voice stays at the zero volume `spu::init`
+        // gave it, and the samples after it are not sent. No retry; the SDK latches the first fault.
+        if sfx::upload_samples(SPU_SAMPLE_BASE, &SFX_BANK).is_err() {
+            // Silent by construction; nothing else to do.
+        }
 
         self.font = Some(FontAtlas::upload(&BASIC_8X16, FONT_TPAGE, FONT_CLUT));
 

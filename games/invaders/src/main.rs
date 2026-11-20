@@ -108,22 +108,22 @@ const VOICE_LOSE: Voice = Voice::V3;
 const SFX_BANK: [sfx::Sample<'static>; 4] = [
     sfx::Sample {
         voice: VOICE_SHOOT,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/swoosh.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/swoosh.psau"),
         volume: Volume::linear(1, 7),
     },
     sfx::Sample {
         voice: VOICE_KILL,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/explosion_short.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/explosion_short.psau"),
         volume: Volume::linear(1, 7),
     },
     sfx::Sample {
         voice: VOICE_MARCH,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/ui_beep.psau"),
         volume: Volume::linear(1, 8),
     },
     sfx::Sample {
         voice: VOICE_LOSE,
-        bytes: include_bytes!("../../../assets/audio/freesfx/psau/hit_metal.psau"),
+        bytes: psx_sfx::include_psau!("../../../assets/audio/freesfx/psau/hit_metal.psau"),
         volume: Volume::linear(1, 9),
     },
 ];
@@ -522,7 +522,11 @@ impl Scene for Invaders {
         game_trace("invaders: init");
         spu::init();
         game_trace("invaders: spu ok");
-        sfx::upload_samples(SPU_SAMPLE_BASE, &SFX_BANK);
+        // A sample whose upload failed is never played: its voice stays at the zero volume `spu::init`
+        // gave it, and the samples after it are not sent. No retry; the SDK latches the first fault.
+        if sfx::upload_samples(SPU_SAMPLE_BASE, &SFX_BANK).is_err() {
+            // Silent by construction; nothing else to do.
+        }
         game_trace("invaders: sfx ok");
 
         self.font = Some(FontAtlas::upload(&BASIC_8X16, FONT_TPAGE, FONT_CLUT));
