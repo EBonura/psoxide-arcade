@@ -9,7 +9,7 @@
 //! song plays, so the directory is read once, before the first note, and
 //! nothing reads the disc afterwards.
 
-use psx_fmv::iso;
+use psx_io::iso;
 use psx_io::cd::reader::{SectorReader, SECTOR_WORDS};
 use psx_io::cd::xa::{DriveSpeed, Event, File, Player, Song};
 use psx_io::periph::Cd;
@@ -269,7 +269,7 @@ fn read_one(reader: &mut SectorReader, lba: u32, into: &mut [u32; SECTOR_WORDS])
     ok
 }
 
-fn as_bytes(sector: &[u32; SECTOR_WORDS]) -> &[u8] {
+fn as_bytes(sector: &[u32; SECTOR_WORDS]) -> &[u8; SECTOR_WORDS * 4] {
     // SAFETY: a [u32; 512] is 2048 initialised bytes, and u8 has no alignment.
-    unsafe { core::slice::from_raw_parts(sector.as_ptr() as *const u8, SECTOR_WORDS * 4) }
+    unsafe { &*(sector as *const [u32; SECTOR_WORDS]).cast::<[u8; SECTOR_WORDS * 4]>() }
 }
