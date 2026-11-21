@@ -53,6 +53,10 @@ out = "build/pong"
 commands = [["cp", "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.map", "{out}/game-magikaaaaaarp-pong.map"]]
 map = "game-magikaaaaaarp-pong.map"
 
+# Size bars: text may not grow and free RAM may not fall (tolerance 0), against the baseline blessed on
+# the repinned build. Reason: every program is smaller than in the build installed in the library
+# (launcher text -10.7 KB, each game about -12 KB, the previous lane's measurement of both builds), so a
+# bar at the new figures is tighter than the installed one and leaves no room to give the saving back.
 [[size]]
 build = "ship"
 
@@ -105,11 +109,17 @@ name = "PSoXide Arcade (psoxide-arcade)"
 # pgo/README.txt). Each opens the game from the launcher (the launcher needs the DualShock), starts a
 # round and plays; the window is a stretch of live play after the load. The bar is the blessed spread
 # of the harness's measures (frames presented, work per frame, p99 frame, frames by vblank count).
-# Reason and limit, found 2026-11-21 on the PSXcel window and checked on these: the games' frame loop
-# ends in psx-engine's inlined vblank spin, which psoxide-pgo's wait classifier does not recognise at
-# this SDK pin, so work per frame reads as the whole frame and only a frame that misses its vblank
-# would move it. See psxcel/psoxide-test.toml for the measurement; [[speed]] has no key that passes
-# `--wait-range` to name the loop.
+# Reason for the bar: it is the blessed spread of the repinned build, and it is looser than the build
+# installed in the library (bff0839, SDK 0187c5f4fab8), which was measured on the same three tapes and
+# windows on 2026-11-21 (psoxide-pgo measure, work cycles per frame, p99 frame; every frame presents in
+# one vblank in both): invaders 17,512 -> 18,766 (+7.2%), p99 20,692 -> 22,009 (+6.4%); pong 25,422 ->
+# 27,554 (+8.4%), p99 47,962 -> 50,769 (+5.8%). The repin allows a measured, logged slowdown; this is
+# that log. The bar does not hide a further one: the spread is a few hundred cycles. Limit: breakout's
+# frame loop ends in psx-engine's inlined vblank spin, which psoxide-pgo's wait classifier recognises
+# in the installed build (work 14,325 per frame) and does not at this pin, so its work figure reads as
+# the whole frame (452,983) and only a frame that misses its vblank would move it; the same happens in
+# PSXcel (see its psoxide-test.toml). [[speed]] has no key that passes `--wait-range` to name the loop.
+
 [[speed]]
 name = "breakout"
 build = "ship"
