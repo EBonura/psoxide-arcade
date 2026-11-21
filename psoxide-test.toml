@@ -100,3 +100,33 @@ compare = ["psoxide-arcade.bin", "psoxide-arcade.cue", "launcher.exe", "game-bre
 [[install]]
 build = "ship"
 name = "PSoXide Arcade (psoxide-arcade)"
+
+# Speed windows: one poll-bound tape per game (`psoxide-test tape --pad dualshock`, the schedules in
+# pgo/README.txt). Each opens the game from the launcher (the launcher needs the DualShock), starts a
+# round and plays; the window is a stretch of live play after the load. The bar is the blessed spread
+# of the harness's measures (frames presented, work per frame, p99 frame, frames by vblank count).
+# Reason and limit, found 2026-11-21 on the PSXcel window and checked on these: the games' frame loop
+# ends in psx-engine's inlined vblank spin, which psoxide-pgo's wait classifier does not recognise at
+# this SDK pin, so work per frame reads as the whole frame and only a frame that misses its vblank
+# would move it. See psxcel/psoxide-test.toml for the measurement; [[speed]] has no key that passes
+# `--wait-range` to name the loop.
+[[speed]]
+name = "breakout"
+build = "ship"
+tape = "pgo/breakout.pxtape"
+polls = [760, 1000]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+
+[[speed]]
+name = "invaders"
+build = "ship"
+tape = "pgo/invaders.pxtape"
+polls = [760, 1000]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+
+[[speed]]
+name = "pong"
+build = "ship"
+tape = "pgo/pong.pxtape"
+polls = [850, 1350]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
