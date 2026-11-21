@@ -59,10 +59,20 @@ hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = 
 timeout = 300
 
 [[step]]
+label = "release"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 44, op = "eq", value = 0 }
+timeout = 60
+
+[[step]]
 label = "browse to card 2"
 press = ["right"]
 hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 2 }
 timeout = 300
+
+[[step]]
+label = "release"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 44, op = "eq", value = 0 }
+timeout = 60
 
 [[step]]
 label = "launch MAGIKAAAAARP PONG"
