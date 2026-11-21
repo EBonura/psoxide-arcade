@@ -1,0 +1,75 @@
+# A digital pad is refused: the launcher shows the controller notice and ignores the menu. Cross
+# held for a few polls launches nothing and the carousel does not move.
+# ARCADE_LAUNCHER_JOURNEY words (launcher/src/main.rs): +0 magic ARCL, +8 published, +12 tick,
+# +16 selected card, +24 analog pad accepted, +28 launch warp frames (-1 for none).
+name = "arcade-pad-refusal"
+title = "Arcade launcher: a digital pad is refused and the menu stays put"
+disc = "build/journey/psoxide-arcade.cue"
+symbols = ["build/journey/work/guest/mipsel-sony-psx/release/launcher.map"]
+pad = "digital"
+max_ticks = 3000
+
+[[step]]
+label = "the launcher is up"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 0, op = "eq", value = 1279480385 }
+timeout = 1200
+
+[[step]]
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 8, op = "eq", value = 1 }
+timeout = 60
+
+[[step]]
+label = "the launcher has run 90 ticks"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 12, op = "ge", value = 90 }
+timeout = 600
+
+[[step]]
+checkpoint = "notice"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 24
+op = "eq"
+value = 0
+note = "a digital pad is not accepted"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 28
+signed = true
+op = "eq"
+value = -1
+note = "no launch"
+
+[[step]]
+label = "Cross and Right on a refused pad"
+sync = "poll"
+press = ["cross", "right"]
+hold = 6
+wait = 20
+
+[[step]]
+checkpoint = "still-refused"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 24
+op = "eq"
+value = 0
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 0
+note = "the carousel did not move"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 28
+signed = true
+op = "eq"
+value = -1
+note = "nothing launched"

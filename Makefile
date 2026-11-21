@@ -18,6 +18,13 @@ PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=cor
 PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,-Zunstable-options -Cpanic=immediate-abort)
 LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
 
+# FEATURES: cargo features of the launcher and the three games (`journey-state` is the test disc's
+# read-only observation; the shipping build has none). Each variant wants its own BUILD directory
+# (psoxide-test's two builds pass BUILD and DIST): cargo does not relink, so does not rewrite the
+# link maps, for a feature set it has built before.
+FEATURES ?=
+FEATURE_FLAGS = $(if $(strip $(FEATURES)),--features $(strip $(FEATURES)))
+
 LOADER_BLOB := $(OUT)/loader.exe
 LAUNCHER_EXE := $(OUT)/launcher.exe
 BREAKOUT_EXE := $(OUT)/game-breakout.exe
@@ -98,12 +105,12 @@ launcher: loader cards
 	cd launcher && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
-		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS)
+		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
 
 games: repro-rustc
-	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS)
-	cd games/invaders && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS)
-	cd games/magikarp-pong && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS)
+	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
+	cd games/invaders && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
+	cd games/magikarp-pong && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
 
 mkdisc: psoxide
 	cd tools/mkdisc && cargo build --release

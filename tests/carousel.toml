@@ -1,0 +1,171 @@
+# The launcher's carousel on a DualShock: boot, walk right through the three games to the credits
+# card and back, wrap from the first card to the last, switch language, and see that Cross on the
+# credits card launches nothing. ARCADE_LAUNCHER_JOURNEY words (launcher/src/main.rs): +0 magic
+# ARCL, +8 published, +12 tick, +16 selected card, +20 cards shown, +24 analog pad accepted, +28
+# launch warp frames (-1 for none), +32 card being launched, +36 gated entries revealed, +40
+# Italian. Every press is held until the program's own state says it took (a poll-synchronous hold).
+name = "arcade-carousel"
+title = "Arcade launcher: browse the carousel, wrap, change language, credits launch nothing"
+disc = "build/journey/psoxide-arcade.cue"
+symbols = ["build/journey/work/guest/mipsel-sony-psx/release/launcher.map"]
+pad = "dualshock"
+max_ticks = 3000
+
+[[step]]
+label = "the launcher is up"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 0, op = "eq", value = 1279480385 }
+timeout = 1200
+
+[[step]]
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 8, op = "eq", value = 1 }
+timeout = 60
+
+[[step]]
+label = "the DualShock was accepted"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 24, op = "eq", value = 1 }
+timeout = 600
+
+[[step]]
+checkpoint = "boot"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 0
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 20
+op = "eq"
+value = 4
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 36
+op = "eq"
+value = 0
+note = "nothing gated revealed"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 40
+op = "eq"
+value = 0
+note = "English"
+
+[[step]]
+label = "right to card 1"
+sync = "poll"
+press = ["right"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 1 }
+timeout = 300
+
+[[step]]
+label = "right to card 2"
+sync = "poll"
+press = ["right"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 2 }
+timeout = 300
+
+[[step]]
+label = "right to card 3"
+sync = "poll"
+press = ["right"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 3 }
+timeout = 300
+
+[[step]]
+checkpoint = "credits-card"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 3
+note = "the credits card is the last"
+
+[[step]]
+label = "Cross on the credits card: nothing to launch"
+sync = "poll"
+press = ["cross"]
+hold = 3
+wait = 20
+
+[[step]]
+checkpoint = "credits-do-not-launch"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 28
+signed = true
+op = "eq"
+value = -1
+note = "no launch started"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 3
+
+[[step]]
+label = "right wraps to the first card"
+sync = "poll"
+press = ["right"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 0 }
+timeout = 300
+
+[[step]]
+label = "left wraps back to the credits"
+sync = "poll"
+press = ["left"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 3 }
+timeout = 300
+
+[[step]]
+label = "left to the last game"
+sync = "poll"
+press = ["left"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 16, op = "eq", value = 2 }
+timeout = 300
+
+[[step]]
+label = "Up switches to Italian"
+sync = "poll"
+press = ["up"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 40, op = "eq", value = 1 }
+timeout = 300
+
+[[step]]
+label = "Down switches back"
+sync = "poll"
+press = ["down"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 40, op = "eq", value = 0 }
+timeout = 300
+
+[[step]]
+checkpoint = "end"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 2
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 28
+signed = true
+op = "eq"
+value = -1
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 40
+op = "eq"
+value = 0

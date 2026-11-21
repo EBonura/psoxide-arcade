@@ -263,6 +263,18 @@ const FADE_FRAMES: i32 = 14;
 /// Frames the launch shutter runs before the hand-off.
 const WARP_FRAMES: i32 = 40;
 
+// Journey observation (cargo feature `journey-state`, the test disc only; see games/journey_state.rs).
+// Fields from +12: tick, selected card (0..count), cards shown, analog pad accepted (1) or the
+// controller notice up (0), launch warp frames (-1 while the menu is just a menu), the card
+// being launched, the gated entries revealed (1), Italian (1).
+#[cfg(feature = "journey-state")]
+#[path = "../../games/journey_state.rs"]
+mod journey_state;
+#[cfg(feature = "journey-state")]
+#[no_mangle]
+pub static mut ARCADE_LAUNCHER_JOURNEY: [u32; journey_state::words(8)] =
+    [0; journey_state::words(8)];
+
 // The reader owns a one-sector bounce buffer; keep it off the 32 KiB stack.
 static mut READER: SectorReader = SectorReader::new();
 static mut TOC_SECTOR: [u32; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize] =
@@ -475,6 +487,28 @@ fn main() {
                 // Never returns when the disc is readable.
                 boot(&entries[launch_index], &mut fb);
             }
+        }
+        #[cfg(feature = "journey-state")]
+        // SAFETY: single-threaded; the block is eight fields and nothing else writes it.
+        unsafe {
+            journey_state::publish(
+                core::ptr::addr_of_mut!(ARCADE_LAUNCHER_JOURNEY).cast(),
+                journey_state::magic(*b"ARCL"),
+                [
+                    tick,
+                    if count > 0 {
+                        selected.rem_euclid(count as i32) as u32
+                    } else {
+                        0
+                    },
+                    count as u32,
+                    u32::from(analog_ok),
+                    warp as u32,
+                    launch_index as u32,
+                    u32::from(unlocked),
+                    u32::from(italian),
+                ],
+            );
         }
         // No menu track on this disc, so there is no beat to answer.
         let beat = carousel::Beat::default();

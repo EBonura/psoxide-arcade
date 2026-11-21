@@ -14,6 +14,10 @@ license = "GPL-2.0-or-later"
 name = "game-magikaaaaaarp-pong"
 path = "src/main.rs"
 
+# A read-only observation of the program for psoxide-test's journeys; never in the shipping disc.
+[features]
+journey-state = []
+
 [profile.release]
 # Keep absolute host paths out of the shipped binary. rustc records the
 # source path of every panic/assert site (core::panic::Location) as a

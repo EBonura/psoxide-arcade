@@ -1,0 +1,152 @@
+# Arcade launcher: boot, pick BREAKOUT (0 to the right), launch it and reach play
+# Closed loop only: every press is held until the program's own state says it took, every wait ends
+# on state, every checkpoint reads RAM. ARCADE_LAUNCHER_JOURNEY words (launcher/src/main.rs): +0
+# magic ARCL, +8 published, +12 tick, +16 selected card, +20 cards shown (three games and the
+# credits), +24 analog pad accepted, +28 launch warp frames (-1 for none), +32 card being launched.
+# BREAKOUT_JOURNEY words (games/journey_state.rs): +0 magic, +8 published, +12 frame, +16 shell screen
+# (0 title, 1 playing, 2 paused, 3 results), then the program's own (see its main.rs).
+name = "arcade-launch-breakout"
+title = "Arcade launcher: boot, pick BREAKOUT (0 to the right), launch it and reach play"
+disc = "build/journey/psoxide-arcade.cue"
+symbols = ["build/journey/work/guest/mipsel-sony-psx/release/launcher.map", "build/journey/work/guest/mipsel-sony-psx/release/game-breakout.map"]
+pad = "dualshock"
+
+[[step]]
+label = "the launcher is up"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 0, op = "eq", value = 1279480385 }
+timeout = 1200
+
+[[step]]
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 8, op = "eq", value = 1 }
+timeout = 60
+
+[[step]]
+checkpoint = "launcher"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 16
+op = "eq"
+value = 0
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 20
+op = "eq"
+value = 4
+note = "three games and the credits card"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 24
+op = "eq"
+value = 1
+note = "the DualShock was accepted"
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 28
+signed = true
+op = "eq"
+value = -1
+note = "no launch under way"
+
+[[step]]
+label = "launch BREAKOUT"
+press = ["cross"]
+hold_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 28, op = "ge", value = 1, signed = true }
+timeout = 300
+
+[[step]]
+checkpoint = "launching"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "ARCADE_LAUNCHER_JOURNEY"
+offset = 32
+op = "eq"
+value = 0
+note = "BREAKOUT is the card launched"
+
+[[step]]
+label = "BREAKOUT loaded from the disc and running"
+wait_until = { kind = "ram", sym = "BREAKOUT_JOURNEY", offset = 0, op = "eq", value = 1330336322 }
+timeout = 1500
+
+[[step]]
+wait_until = { kind = "ram", sym = "BREAKOUT_JOURNEY", offset = 8, op = "eq", value = 1 }
+timeout = 120
+
+[[step]]
+checkpoint = "title"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 16
+op = "eq"
+value = 0
+note = "its title screen"
+
+[[step]]
+label = "Start on the title"
+press = ["start"]
+hold_until = { kind = "ram", sym = "BREAKOUT_JOURNEY", offset = 16, op = "eq", value = 1 }
+timeout = 300
+
+[[step]]
+checkpoint = "serve"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 16
+op = "eq"
+value = 1
+note = "playing"
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 20
+op = "eq"
+value = 0
+note = "serving"
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 24
+op = "eq"
+value = 0
+note = "score 0"
+
+[[step]]
+label = "Cross serves: the round is live"
+press = ["cross"]
+hold_until = { kind = "ram", sym = "BREAKOUT_JOURNEY", offset = 20, op = "eq", value = 1 }
+timeout = 300
+
+[[step]]
+checkpoint = "in-play"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 16
+op = "eq"
+value = 1
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 20
+op = "eq"
+value = 1
+note = "in play"
+[[step.assert]]
+kind = "ram"
+sym = "BREAKOUT_JOURNEY"
+offset = 28
+op = "between"
+value = 2
+value_hi = 5
+note = "lives by difficulty (5, 3 or 2)"

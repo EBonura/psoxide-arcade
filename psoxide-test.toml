@@ -1,0 +1,105 @@
+# PSoXide Arcade's test description for psoxide-test (the SDK's harness, tools/psoxide-test). It
+# declares what to build and check; the harness decides how. Baseline: psoxide-test.baseline.toml.
+schema = 1
+name = "PSoXide Arcade"
+repository = "EBonura/psoxide-arcade"
+
+# The shipping disc (what the library gets): no journey state compiled in. Each build has its own
+# BUILD directory inside `out` (cargo does not relink, so does not rewrite a link map, for a
+# feature set it has built before) and writes the disc into `out`.
+[[build]]
+name = "ship"
+out = "build/ship"
+commands = [["make", "disc", "BUILD={out}/work", "DIST={out}"]]
+collect = { "launcher.exe" = "build/ship/work/guest/mipsel-sony-psx/release/launcher.exe", "game-breakout.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.exe", "game-invaders.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.exe", "game-magikaaaaaarp-pong.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.exe" }
+disc = "psoxide-arcade.cue"
+map = "work/guest/mipsel-sony-psx/release/launcher.map"
+layout = false
+layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
+
+# The journeys' disc: the same four programs with a read-only observation each (cargo feature
+# journey-state: ARCADE_LAUNCHER_JOURNEY, BREAKOUT_JOURNEY, INVADERS_JOURNEY, PONG_JOURNEY in the maps).
+[[build]]
+name = "journey"
+out = "build/journey"
+commands = [["make", "disc", "FEATURES=journey-state", "BUILD={out}/work", "DIST={out}"]]
+collect = { "launcher.exe" = "build/journey/work/guest/mipsel-sony-psx/release/launcher.exe" }
+disc = "psoxide-arcade.cue"
+map = "work/guest/mipsel-sony-psx/release/launcher.map"
+layout = false
+layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
+
+# The breakout program's link, for its size bar: it is linked by the shipping build, so this build only
+# collects its map from there (the harness judges one map per build).
+[[build]]
+name = "breakout"
+out = "build/breakout"
+commands = [["true"]]
+collect = { "game-breakout.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.map" }
+map = "game-breakout.map"
+
+# The invaders program's link, for its size bar: it is linked by the shipping build, so this build only
+# collects its map from there (the harness judges one map per build).
+[[build]]
+name = "invaders"
+out = "build/invaders"
+commands = [["true"]]
+collect = { "game-invaders.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.map" }
+map = "game-invaders.map"
+
+# The pong program's link, for its size bar: it is linked by the shipping build, so this build only
+# collects its map from there (the harness judges one map per build).
+[[build]]
+name = "pong"
+out = "build/pong"
+commands = [["true"]]
+collect = { "game-magikaaaaaarp-pong.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.map" }
+map = "game-magikaaaaaarp-pong.map"
+
+[[size]]
+build = "ship"
+
+[[size]]
+build = "breakout"
+
+[[size]]
+build = "invaders"
+
+[[size]]
+build = "pong"
+
+[journeys]
+files = "tests/*.toml"
+precheck = ["launch-breakout", "pad-refusal"]
+
+[cross]
+smoke = ["tests/launch-breakout.toml", "tests/launch-invaders.toml", "tests/launch-pong.toml"]
+# The launcher refuses anything but a DualShock in analog mode.
+pads = ["dualshock"]
+
+[[host]]
+name = "disc-toc-tests"
+command = ["cargo", "test", "-q", "--manifest-path", ".psoxide/engine/Cargo.toml", "-p", "psx-disc-toc"]
+
+[[host]]
+name = "carousel-tests"
+command = ["cargo", "test", "-q", "--manifest-path", ".psoxide/engine/Cargo.toml", "-p", "psx-carousel"]
+
+[[host]]
+name = "mkdisc-tests"
+command = ["cargo", "test", "-q"]
+dir = "tools/mkdisc"
+
+# Load-delay hazards in guest asm (fleet rule since SDK 580daa02), with the pin's own scanner.
+[[host]]
+name = "check-mfc0"
+command = ["cargo", "run", "-q", "--release", "--locked", "--manifest-path", ".psoxide/tools/psoxide-hazard/Cargo.toml", "--bin", "check-mfc0", "--", "launcher", "loader", "games"]
+
+[[clean]]
+build = "ship"
+seed = [".psoxide"]
+compare = ["psoxide-arcade.bin", "psoxide-arcade.cue", "launcher.exe", "game-breakout.exe", "game-invaders.exe", "game-magikaaaaaarp-pong.exe"]
+
+[[install]]
+build = "ship"
+name = "PSoXide Arcade (psoxide-arcade)"

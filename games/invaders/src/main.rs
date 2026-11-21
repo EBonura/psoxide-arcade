@@ -171,6 +171,16 @@ enum Phase {
     Lost,
 }
 
+// Journey observation (cargo feature `journey-state`, the test disc only; see journey_state.rs).
+// Fields from +12: frame, shell screen (0 title, 1 playing, 2 paused, 3 results), phase (0 serve,
+// 1 playing, 2 lost), score, lives, aliens left, wave.
+#[cfg(feature = "journey-state")]
+#[path = "../../journey_state.rs"]
+mod journey_state;
+#[cfg(feature = "journey-state")]
+#[no_mangle]
+pub static mut INVADERS_JOURNEY: [u32; journey_state::words(7)] = [0; journey_state::words(7)];
+
 struct Invaders {
     phase: Phase,
     ship_x: i16,
@@ -196,6 +206,37 @@ struct Invaders {
 }
 
 impl Invaders {
+    #[cfg(feature = "journey-state")]
+    fn publish_journey(&self, ctx: &Ctx) {
+        let screen = match self.shell.screen() {
+            MicrogameScreen::Title => 0,
+            MicrogameScreen::Playing => 1,
+            MicrogameScreen::Paused => 2,
+            MicrogameScreen::Results => 3,
+        };
+        let phase = match self.phase {
+            Phase::Serve => 0,
+            Phase::Playing => 1,
+            Phase::Lost => 2,
+        };
+        // SAFETY: single-threaded; the block is seven fields and nothing else writes it.
+        unsafe {
+            journey_state::publish(
+                core::ptr::addr_of_mut!(INVADERS_JOURNEY).cast(),
+                journey_state::magic(*b"INVD"),
+                [
+                    ctx.visual_frame.as_u32(),
+                    screen,
+                    phase,
+                    u32::from(self.score),
+                    u32::from(self.lives),
+                    u32::from(self.aliens_left),
+                    u32::from(self.wave),
+                ],
+            );
+        }
+    }
+
     const fn new() -> Self {
         Self {
             phase: Phase::Serve,
@@ -551,6 +592,8 @@ impl Scene for Invaders {
             MicrogameAction::ReturnToTitle => self.persist_shell(),
             MicrogameAction::None | MicrogameAction::Resume => {}
         }
+        #[cfg(feature = "journey-state")]
+        self.publish_journey(ctx);
         if !self.shell.is_playing() {
             return;
         }

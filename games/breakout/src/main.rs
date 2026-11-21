@@ -145,6 +145,16 @@ enum Phase {
     Lost,
 }
 
+// Journey observation (cargo feature `journey-state`, the test disc only; see journey_state.rs).
+// Fields from +12: frame, shell screen (0 title, 1 playing, 2 paused, 3 results), phase (0 serve,
+// 1 playing, 2 won, 3 lost), score, lives, bricks left.
+#[cfg(feature = "journey-state")]
+#[path = "../../journey_state.rs"]
+mod journey_state;
+#[cfg(feature = "journey-state")]
+#[no_mangle]
+pub static mut BREAKOUT_JOURNEY: [u32; journey_state::words(6)] = [0; journey_state::words(6)];
+
 struct Breakout {
     phase: Phase,
     paddle_x: i16,
@@ -168,6 +178,37 @@ struct Breakout {
 }
 
 impl Breakout {
+    #[cfg(feature = "journey-state")]
+    fn publish_journey(&self, ctx: &Ctx) {
+        let screen = match self.shell.screen() {
+            MicrogameScreen::Title => 0,
+            MicrogameScreen::Playing => 1,
+            MicrogameScreen::Paused => 2,
+            MicrogameScreen::Results => 3,
+        };
+        let phase = match self.phase {
+            Phase::Serve => 0,
+            Phase::Playing => 1,
+            Phase::Won => 2,
+            Phase::Lost => 3,
+        };
+        // SAFETY: single-threaded; the block is six fields and nothing else writes it.
+        unsafe {
+            journey_state::publish(
+                core::ptr::addr_of_mut!(BREAKOUT_JOURNEY).cast(),
+                journey_state::magic(*b"BRKO"),
+                [
+                    ctx.visual_frame.as_u32(),
+                    screen,
+                    phase,
+                    u32::from(self.score),
+                    u32::from(self.lives),
+                    u32::from(self.bricks_left),
+                ],
+            );
+        }
+    }
+
     const fn new() -> Self {
         Self {
             phase: Phase::Serve,
@@ -376,6 +417,8 @@ impl Scene for Breakout {
             MicrogameAction::ReturnToTitle => self.persist_shell(),
             MicrogameAction::None | MicrogameAction::Resume => {}
         }
+        #[cfg(feature = "journey-state")]
+        self.publish_journey(ctx);
         if !self.shell.is_playing() {
             return;
         }

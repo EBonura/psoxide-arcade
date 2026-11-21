@@ -164,6 +164,16 @@ static mut SCORE_FLYBY_QUAD: QuadTexturedMaterial = QuadTexturedMaterial::with_m
     TextureMaterial::opaque(0, 0, (0, 0, 0)),
 );
 
+// Journey observation (cargo feature `journey-state`, the test disc only; see journey_state.rs).
+// Fields from +12: frame, shell screen (0 title, 1 playing, 2 paused, 3 results), winner (0 none,
+// 1 or 2), player one's score, player two's score, rally hits.
+#[cfg(feature = "journey-state")]
+#[path = "../../journey_state.rs"]
+mod journey_state;
+#[cfg(feature = "journey-state")]
+#[no_mangle]
+pub static mut PONG_JOURNEY: [u32; journey_state::words(6)] = [0; journey_state::words(6)];
+
 struct MagikaaaaaarpPong {
     p1_y: i16,
     p2_y: i16,
@@ -191,6 +201,31 @@ struct MagikaaaaaarpPong {
 }
 
 impl MagikaaaaaarpPong {
+    #[cfg(feature = "journey-state")]
+    fn publish_journey(&self, ctx: &Ctx) {
+        let screen = match self.shell.screen() {
+            MicrogameScreen::Title => 0,
+            MicrogameScreen::Playing => 1,
+            MicrogameScreen::Paused => 2,
+            MicrogameScreen::Results => 3,
+        };
+        // SAFETY: single-threaded; the block is six fields and nothing else writes it.
+        unsafe {
+            journey_state::publish(
+                core::ptr::addr_of_mut!(PONG_JOURNEY).cast(),
+                journey_state::magic(*b"PONG"),
+                [
+                    ctx.visual_frame.as_u32(),
+                    screen,
+                    u32::from(self.winner),
+                    u32::from(self.p1_score),
+                    u32::from(self.p2_score),
+                    self.rally_hits,
+                ],
+            );
+        }
+    }
+
     const fn new() -> Self {
         Self {
             p1_y: 0,
@@ -362,6 +397,8 @@ impl Scene for MagikaaaaaarpPong {
             MicrogameAction::ReturnToTitle => self.persist_shell(),
             MicrogameAction::None | MicrogameAction::Resume => {}
         }
+        #[cfg(feature = "journey-state")]
+        self.publish_journey(ctx);
         if !self.shell.is_playing() {
             return;
         }
