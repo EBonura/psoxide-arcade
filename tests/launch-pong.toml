@@ -151,3 +151,19 @@ sym = "PONG_JOURNEY"
 offset = 28
 op = "eq"
 value = 0
+
+[[step]]
+label = "the game keeps running: 300 of its own frames since it loaded"
+wait_until = { kind = "ram", sym = "PONG_JOURNEY", offset = 12, op = "ge", value = 300 }
+timeout = 900
+
+[[step]]
+checkpoint = "still-running"
+golden = false
+[[step.assert]]
+kind = "ram"
+sym = "PONG_JOURNEY"
+offset = 8
+op = "eq"
+value = 1
+note = "still publishing"
