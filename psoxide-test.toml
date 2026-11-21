@@ -30,30 +30,27 @@ layout = false
 layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
 
 # The breakout program's link, for its size bar: it is linked by the shipping build, so this build only
-# collects its map from there (the harness judges one map per build).
+# copies its map from there (the harness judges one map per build).
 [[build]]
 name = "breakout"
 out = "build/breakout"
-commands = [["true"]]
-collect = { "game-breakout.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.map" }
+commands = [["cp", "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.map", "{out}/game-breakout.map"]]
 map = "game-breakout.map"
 
 # The invaders program's link, for its size bar: it is linked by the shipping build, so this build only
-# collects its map from there (the harness judges one map per build).
+# copies its map from there (the harness judges one map per build).
 [[build]]
 name = "invaders"
 out = "build/invaders"
-commands = [["true"]]
-collect = { "game-invaders.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.map" }
+commands = [["cp", "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.map", "{out}/game-invaders.map"]]
 map = "game-invaders.map"
 
 # The pong program's link, for its size bar: it is linked by the shipping build, so this build only
-# collects its map from there (the harness judges one map per build).
+# copies its map from there (the harness judges one map per build).
 [[build]]
 name = "pong"
 out = "build/pong"
-commands = [["true"]]
-collect = { "game-magikaaaaaarp-pong.map" = "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.map" }
+commands = [["cp", "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.map", "{out}/game-magikaaaaaarp-pong.map"]]
 map = "game-magikaaaaaarp-pong.map"
 
 [[size]]
