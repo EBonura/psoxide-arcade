@@ -21,6 +21,11 @@ wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 8, op = "
 timeout = 60
 
 [[step]]
+label = "the DualShock was accepted (the analog handshake takes a few frames)"
+wait_until = { kind = "ram", sym = "ARCADE_LAUNCHER_JOURNEY", offset = 24, op = "eq", value = 1 }
+timeout = 600
+
+[[step]]
 checkpoint = "launcher"
 golden = false
 [[step.assert]]
