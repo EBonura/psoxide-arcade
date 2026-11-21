@@ -1,0 +1,83 @@
+# Written by `psoxide-test bless`; edit only by blessing again (decision 4: a bar changes by editing
+# psoxide-test.toml with a reason, never by hand-editing these numbers).
+schema = 1
+blessed_commit = "20f8c57f21e34fd2777d7d7fa9a21aaaf5533968"
+sdk_pin = "fce1f6855bc1c3e8336cc68be98a3df06ef9a967"
+
+[size.breakout]
+text = 149052
+data = 73256
+bss = 824
+free = 1775448
+
+[size.invaders]
+text = 157600
+data = 81384
+bss = 828
+free = 1758772
+
+[size.pong]
+text = 160056
+data = 186712
+bss = 780
+free = 1651028
+
+[size.ship]
+text = 54276
+data = 50936
+bss = 8344
+free = 1885016
+
+[speed.breakout]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+flips = [240, 240, 240, 240, 240, 240, 240, 240]
+work_per_frame = [452875, 452895, 452918, 452946, 452983, 453081, 453172, 453227]
+frame_work_p99 = [455411, 455411, 455411, 455411, 455411, 455584, 455584, 455584]
+vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
+
+[speed.invaders]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+flips = [240, 240, 240, 240, 240, 240, 240, 240]
+work_per_frame = [18753, 18749, 18734, 18742, 18766, 18768, 18861, 18877]
+frame_work_p99 = [22009, 22009, 22009, 22009, 22009, 22009, 22193, 22296]
+vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
+
+[speed.pong]
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+flips = [500, 500, 500, 500, 500, 500, 500, 500]
+work_per_frame = [27740, 27616, 27528, 27538, 27554, 27571, 27586, 27600]
+frame_work_p99 = [50881, 50768, 50768, 50768, 50769, 50769, 50769, 50769]
+vblanks = ["1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499"]
+
+[journeys.carousel]
+ticks = 56
+open_loop = 0
+clock_waits = 0
+
+[journeys.launch-breakout]
+ticks = 158
+open_loop = 0
+clock_waits = 0
+
+[journeys.launch-invaders]
+ticks = 167
+open_loop = 0
+clock_waits = 0
+
+[journeys.launch-pong]
+ticks = 224
+open_loop = 0
+clock_waits = 0
+
+[journeys.pad-refusal]
+ticks = 136
+open_loop = 0
+clock_waits = 0
+
+[host]
+
+[maps]
+breakout = "2e7c204e135ca886cd3b7236fbbe0db262af6e54d7cb2754e834ae083fca521d"
+invaders = "9767fd4e76e013a349b8a6976b7922e513a32a8cca3e8387b300c8a25f1f647b"
+pong = "da07917cf3febb95eb5bdf84ab7d1b5294f2bb282fe126b00e5e6527079cfb76"
+ship = "19577e54e333140c9a624085a345b34fddb7ee2420c504326d2dd9e7aa0531ed"
