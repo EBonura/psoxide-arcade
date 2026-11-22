@@ -1,53 +1,80 @@
 # Written by `psoxide-test bless`; edit only by blessing again (decision 4: a bar changes by editing
 # psoxide-test.toml with a reason, never by hand-editing these numbers).
 schema = 1
-blessed_commit = "7b128f1fd366c6f711f07909045c0a4ad64724d6"
-sdk_pin = "fce1f6855bc1c3e8336cc68be98a3df06ef9a967"
+blessed_commit = "d12e8f676549dfa4ae317d13f9ba13c725695631"
+sdk_pin = "6bfe478ff0e0c6e226cdf67b164df311c1658fec"
 
 [size.breakout]
-text = 149052
-data = 73256
+text = 150004
+data = 73272
 bss = 824
-free = 1775448
+free = 1774472
 
 [size.invaders]
-text = 157600
-data = 81384
+text = 158580
+data = 81400
 bss = 828
-free = 1758772
+free = 1757764
 
 [size.pong]
-text = 160056
-data = 186712
-bss = 780
-free = 1651028
+text = 161220
+data = 186728
+bss = 796
+free = 1649828
 
 [size.ship]
-text = 54276
-data = 50936
+text = 54400
+data = 51048
 bss = 8344
-free = 1885016
+free = 1884792
 
 [speed.breakout]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [452875, 452895, 452918, 452946, 452983, 453081, 453172, 453227]
-frame_work_p99 = [455411, 455411, 455411, 455411, 455411, 455584, 455584, 455584]
+work_per_frame = [452869, 452888, 452911, 452937, 452973, 453069, 453159, 453214]
+frame_work_p99 = [455595, 455595, 455595, 455595, 455595, 455595, 455595, 455595]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
+layouts = []
+
+[speed.breakout.identity]
+tape = "pgo/breakout.pxtape"
+tape_sha256 = "07ee7de9fd50a6cac8755f05e6818a8a03b7a4667e0296832082718bb91fc630"
+window = "polls 760..1000"
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+launch_args = []
+gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 
 [speed.invaders]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [18753, 18749, 18734, 18742, 18766, 18768, 18861, 18877]
-frame_work_p99 = [22009, 22009, 22009, 22009, 22009, 22009, 22193, 22296]
+work_per_frame = [18683, 18678, 18664, 18671, 18693, 18693, 18788, 18803]
+frame_work_p99 = [21376, 21376, 21376, 21376, 21376, 21311, 21884, 21884]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
+layouts = []
+
+[speed.invaders.identity]
+tape = "pgo/invaders.pxtape"
+tape_sha256 = "eb99206e0875019f949ab58326725ec39bc6ee2317e55b3839cc82205dd0e50e"
+window = "polls 760..1000"
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+launch_args = []
+gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 
 [speed.pong]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [500, 500, 500, 500, 500, 500, 500, 500]
-work_per_frame = [27740, 27616, 27528, 27538, 27554, 27571, 27586, 27600]
-frame_work_p99 = [50881, 50768, 50768, 50768, 50769, 50769, 50769, 50769]
+work_per_frame = [27414, 27290, 27201, 27211, 27225, 27241, 27255, 27268]
+frame_work_p99 = [50235, 50199, 50199, 50199, 50199, 50199, 50200, 50200]
 vblanks = ["1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499"]
+layouts = []
+
+[speed.pong.identity]
+tape = "pgo/pong.pxtape"
+tape_sha256 = "c8bc12d6adca3db2590676a30faceaac1db6081573224912cb744ee9347a7c25"
+window = "polls 850..1350"
+offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
+launch_args = []
+gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 
 [journeys.carousel]
 ticks = 56
@@ -55,7 +82,7 @@ open_loop = 0
 clock_waits = 0
 
 [journeys.launch-breakout]
-ticks = 453
+ticks = 454
 open_loop = 0
 clock_waits = 0
 
@@ -77,7 +104,7 @@ clock_waits = 0
 [host]
 
 [maps]
-breakout = "2e7c204e135ca886cd3b7236fbbe0db262af6e54d7cb2754e834ae083fca521d"
-invaders = "9767fd4e76e013a349b8a6976b7922e513a32a8cca3e8387b300c8a25f1f647b"
-pong = "da07917cf3febb95eb5bdf84ab7d1b5294f2bb282fe126b00e5e6527079cfb76"
-ship = "19577e54e333140c9a624085a345b34fddb7ee2420c504326d2dd9e7aa0531ed"
+breakout = "bebd4210be8dd5c80e61b04a426a1767490c5ea162ffdbb6ff582cde9d15a4d2"
+invaders = "88d02f60c2ecb021daa4227754f7b3272ad927fd44ee4e76c9f877404e0bca14"
+pong = "61f137d86d9aa03a0d44b6723d3f61f661ff39e9774ebd526e8aef999dbe42c2"
+ship = "dff15c3434bdbc124361877fe994dd3d4cd0424438bf62908bc1bfa8b8ffa462"
