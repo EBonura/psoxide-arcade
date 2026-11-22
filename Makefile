@@ -76,7 +76,7 @@ HAZARD_PATCH := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo
 
 psoxide:
 	@if [ -n "$(PSOXIDE_FROM)" ]; then \
-		cargo run -q --manifest-path "$(PSOXIDE_FROM)/tools/psoxide-link/Cargo.toml" -- \
+		cargo run -q --manifest-path "$(PSOXIDE_FROM)/tools/psoxide-link/Cargo.toml" --bin psoxide-link -- \
 			--from "$(PSOXIDE_FROM)" --into "$(PSOXIDE)"; \
 	else \
 		grep -q '$(COMPONENTS_REV)' "$(ROOT)/components.lock.json" || { echo "COMPONENTS_REV is not the lock's SDK revision"; exit 1; }; \
