@@ -61,7 +61,7 @@ help:
 # tool is installed once per revision under target/. COMPONENTS_REV is the
 # lock's SDK revision (the psoxide-components binary first exists at e6ec267).
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
-COMPONENTS_REV := fce1f6855bc1c3e8336cc68be98a3df06ef9a967
+COMPONENTS_REV := 74e139d537035761d2b8844ebf34945a3aab4f0b
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
 # Guest builds run under the SDK's psoxide-rustc, so the checkout directory does
 # not reach the crate hashes: the same commit gives the same executables from
