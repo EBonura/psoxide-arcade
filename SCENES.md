@@ -51,13 +51,29 @@ The table moves to version 2 with two row kinds: IMAGE rows are load units (LBA 
 
 In v2 terms the program is four images: the launcher (image 0, BOOT_RESIDENT) and the three games (images 1 to 3) and four scenes, one per image: 0 `ARCADE` (the launcher), 1 `BREAKOUT`, 2 `SPACE INVADERS`, 3 `MAGIKAAAAARP PONG`. Each game is one program that loads at 0x80010000 over the launcher, so images 1 to 3 are SWAP and a switch from the launcher to a game reads that game's image (as the chain-load blob does today). Inside each game everything reachable in play (its menu, play, pause, game over, high score) is in that game's image; no game switches scene during play. Whether the launcher could stay resident beside a game (two images in RAM) is not looked at here: the games link at the launcher's address today. `DEMOTOC.BIN` and `MUSIC1.XA` stay data (v1 rows 4 and 5).
 
-## Boot splash: via .boot, one per disc (pending the SDK change)
+## Boot splash: via .boot, one per disc (built)
 
-Decision (scene-system plan, "Splash: one mechanism, no extra load"): the splash is not dropped and is not a separate scene. psx-splash links into the boot-only `.boot` section of the boot image (sdk/psoxide-boot.ld): stored after `.data`, run from the start of the heap, moved there by `__boot_entry` before `_start`, played once. Only a disc's first program plays it.
+Decision (scene-system plan, "Splash: one mechanism, no extra load"): the splash is not dropped and is not a separate scene. psx-splash links into the boot-only `.boot` section of the boot image (sdk/psoxide-boot.ld): stored after `.data`, run from the start of the heap, moved there by psx-rt's `__boot_entry` before `_start`, played once. Only a disc's first program plays it.
 
-No program of the Arcade has a splash today. The launcher, the disc's first program, gains the SDK splash in its boot image's `.boot` section; the three games do not (one splash per disc, and they are entered from the launcher). The launcher's load grows by what the splash stores (estimate 3 to 8 sectors, as for PSXcel; not measured). Inferred from `launcher/Cargo.toml` (no `alloc`): the launcher has no heap, so the memory sits unused above `__bss_end` until the launcher hands over, and the chain-load blob at 0x801F0000 is far above it.
+Built on SDK lane/disc-scenes-1123 610b97fb661c (pin commit 200fc8b, mkdisc lock 5b9c45d), behind the launcher's off-by-default `scene-core` feature (commit a703d25). `boot::splash` (`launcher/src/boot.rs`, called at `main.rs:289`, a line that was blank) runs before the launcher sets up its own display: it takes the GPU with its own 320x240 pair, polls the pad once with the launcher's `PadReader` (the handshake before interrupts), installs the VBlank counter and plays the splash; `main` then sets the GPU up as before and uploads its BASIC font where the splash put the same one. The function is itself boot-only (`#[link_section = ".boot_only.launcher_splash"]`), so its setup leaves nothing in `main`. `make disc LAUNCHER_FEATURES=scene-core` links the launcher with `-T psoxide-boot.ld` ahead of psoxide.ld as an ELF and writes `launcher.exe` from it with the SDK's `psx-exe`; `FEATURES` still goes to all four programs. The three games get nothing: their exes are byte-identical in the default and the scene-core build (breakout d1b658b2..., invaders 3b61d511..., pong b5a16f61...).
 
-Why this is not built here yet: ld.lld's `--oformat=binary` places sections by run address and ignores `AT()`, so a psoxide-boot.ld link through the flat output these builds use writes `.boot` past `.bss` instead of after `.data` (checked on a small link at the 6bfe scripts: the ELF has the right load address, the flat file does not). It waits for the one SDK-side change (lane/disc-scenes-1123): `.boot` with its run address in the reclaimed region and its load address after `.data`, the exe writer and overlay-compose working from the ELF program headers. Opting in then takes: a repin to that SDK, the `scene-core` feature linking `-T psoxide-boot.ld` ahead of psoxide.ld with `__boot_entry` kept, and the splash call at boot.
+Measured (maps in the campaign's `itch-1123/core-window-keep/psoxide-arcade-610b/`: `off.map` is the default launcher after the feature commit, `scene-core.map`):
+
+| | default | scene-core |
+|---|---|---|
+| exe header PC | `_start` | `__boot_entry` 0x80010684 |
+| .text / .data / .bss | 54,400 / 51,048 / 8,352 | 55,348 / 51,064 / 8,340 |
+| `.boot` | none | 8,068 B, runs at 0x8002C050..0x8002DFD4 (`ALIGN(__bss_end, 16)`), stored at 0x80029FB8 (`__data_end`); `.boot_bss` empty |
+| in `.boot` | | `launcher::boot::splash` 428, `psx_splash::play` 3,956, `logo::expand` 600, `draw_line` closure 264, `show::<boot::splash::{closure}>` 40 (text); `logo::CODED` 2,746, `logo::PALETTE` 32 (rodata) |
+| `__heap_start` (= `__bss_end`) | 0x8002BC88 | 0x8002C04C |
+| resident free RAM (to `__heap_end` 0x801F5F00) | 1,876,600 | **1,875,636 (-964)** |
+| exe stored size (header) | 106,496 B, 52 sectors | 114,688 B, 56 sectors (**+4 sectors**) |
+
+Resident cost 964 B, by symbol (map diff): psx-rt's mover `__boot_entry` 44, `__boot_entry_rs` 240 and the I-cache range flush 284 (568, which every program on `.boot` pays); psx-gpu's `draw::<QuadTexturedGouraud>` 236, which only the splash calls but whose name does not carry `psx_splash`; the pad closure the splash calls each frame 136; `main` +8; .data +16; .bss -12. The launcher has no heap, so the `.boot` range sits unused above `__bss_end` until it chain-loads a game (the loader blob at 0x801F0000 is far above it). `psoxide-size ram` (tools-hc-894d16439831) reports 1,867,564 for the scene-core map: it reads `__heap_start` from the map row's address column, the location counter after `.boot_bss` (0x8002DFD4), not the symbol (0x8002C04C, `llvm-nm`).
+
+Default build: the launcher exe built after the feature commit is byte-identical to the one built at the repin commit 200fc8b (sha256 b2c50cbb...), and so are the three games.
+
+Run (frontend 31982f1e5c8d, headless, no input, 600 M instructions, 2,728 route ticks, 2,715 pad polls): the splash plays (tick 80) and the GAME SELECT carousel is up by tick 200. Frames kept as `core-window-keep/psoxide-arcade-boot-splash.png` and `psoxide-arcade-boot-first-screen.png`.
 
 ## Shared code versus per scene
 
