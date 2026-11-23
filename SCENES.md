@@ -1,5 +1,7 @@
 # PSoXide Arcade on the scene core
 
+**Window update (11-23):** the branch now links for the 8,192 B window, `RAM_SIZE_OVERRIDE = 0x1FE000`, core at **0x801FDF00..0x801FFF00**. The figures below were taken at the earlier 10,240 B cap (0x1FD800, SP 0x801FD700) and are kept as measured; at 0x1FE000, computed, not built: each program's free RAM is 2,048 B higher than the 0x1FD800 figures below and its SP is 0x801FDF00; text, data and bss unchanged. The blob's region map in loader/loader.ld still holds (the stack reserve now starts at 0x801F5F00).
+
 How the Arcade (a launcher, three bare EXEs and a chain-load blob) maps onto the SDK's scene system
 (resident core at 0x801FD700..0x801FFF00, handoff block at 0x801FFF00..0x80200000, `SCENES.TBL` at
 member LBA 22). The row format, kinds and link rules are the core lane's CORE-ABI.md (campaign
@@ -42,6 +44,20 @@ On the demo disc the Arcade today is one nested member image. Under the core its
 rows of the demo disc's table (the demo launcher switching straight to the Arcade launcher at row 0 of
 the member), with the member's `lba_offset` as today. All four must be on the same core hash as the
 demo disc (CORE-ABI 4.4: a mismatched row is refused, 0x23).
+
+## Scene table v2 (v2, row layout pending)
+
+The table moves to version 2 with two row kinds: IMAGE rows are load units (LBA and flags, sectors, load address, size, FNV, residency class BOOT_RESIDENT, RESIDENT_SET n or SWAP) and SCENE rows are entry points (scene id, image index, entry, name). Several scenes can share an image, several images can be in RAM at once, and switching to a scene whose image is loaded reads nothing. The byte layout is not fixed yet; the v1 rows above stay as the record of what was measured.
+
+In v2 terms the program is four images: the launcher (image 0, BOOT_RESIDENT) and the three games (images 1 to 3) and four scenes, one per image: 0 `ARCADE` (the launcher), 1 `BREAKOUT`, 2 `SPACE INVADERS`, 3 `MAGIKAAAAARP PONG`. Each game is one program that loads at 0x80010000 over the launcher, so images 1 to 3 are SWAP and a switch from the launcher to a game reads that game's image (as the chain-load blob does today). Inside each game everything reachable in play (its menu, play, pause, game over, high score) is in that game's image; no game switches scene during play. Whether the launcher could stay resident beside a game (two images in RAM) is not looked at here: the games link at the launcher's address today. `DEMOTOC.BIN` and `MUSIC1.XA` stay data (v1 rows 4 and 5).
+
+## Boot splash: via .boot, one per disc (pending the SDK change)
+
+Decision (scene-system plan, "Splash: one mechanism, no extra load"): the splash is not dropped and is not a separate scene. psx-splash links into the boot-only `.boot` section of the boot image (sdk/psoxide-boot.ld): stored after `.data`, run from the start of the heap, moved there by `__boot_entry` before `_start`, played once. Only a disc's first program plays it.
+
+No program of the Arcade has a splash today. The launcher, the disc's first program, gains the SDK splash in its boot image's `.boot` section; the three games do not (one splash per disc, and they are entered from the launcher). The launcher's load grows by what the splash stores (estimate 3 to 8 sectors, as for PSXcel; not measured). Inferred from `launcher/Cargo.toml` (no `alloc`): the launcher has no heap, so the memory sits unused above `__bss_end` until the launcher hands over, and the chain-load blob at 0x801F0000 is far above it.
+
+Why this is not built here yet: ld.lld's `--oformat=binary` places sections by run address and ignores `AT()`, so a psoxide-boot.ld link through the flat output these builds use writes `.boot` past `.bss` instead of after `.data` (checked on a small link at the 6bfe scripts: the ELF has the right load address, the flat file does not). It waits for the one SDK-side change (lane/disc-scenes-1123): `.boot` with its run address in the reclaimed region and its load address after `.data`, the exe writer and overlay-compose working from the ELF program headers. Opting in then takes: a repin to that SDK, the `scene-core` feature linking `-T psoxide-boot.ld` ahead of psoxide.ld with `__boot_entry` kept, and the splash call at boot.
 
 ## Shared code versus per scene
 
