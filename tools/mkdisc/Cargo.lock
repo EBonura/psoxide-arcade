@@ -122,6 +122,7 @@ name = "psx-iso"
 version = "0.1.0"
 dependencies = [
  "psx-pack",
+ "psx-scene-abi",
 ]
 
 [[package]]
@@ -144,6 +145,10 @@ dependencies = [
  "psx-io",
  "psx-math",
 ]
+
+[[package]]
+name = "psx-scene-abi"
+version = "0.1.0"
 
 [[package]]
 name = "quote"
