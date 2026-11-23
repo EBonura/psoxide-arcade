@@ -63,8 +63,10 @@ loads 64-sector chunks into 0x80010000, checks the FNV and enters the game with 
 On the core, `boot()` keeps its fade and then calls `psx_core_switch(scene_id, args)` (CORE-ABI 3,
 slot 0x801FD708). The core does the quiesce, chunked load, checksum and entry (CORE-ABI 3.1, 3.3). The
 `loader/` crate, `LOADER_BLOB`, `LOADER_BASE`/`LOADER_LIMIT` and the launcher's `disc_base::shift_lba`
-arithmetic go; mkdisc's `check_fits_below_loader` (`tools/mkdisc/src/main.rs:252`) becomes CORE-ABI's
-`t_addr + t_size <= 0x801FD700` bound.
+arithmetic go; mkdisc's `check_fits_below_loader` (`tools/mkdisc/src/main.rs:252`) becomes the scene
+table's bound: `t_addr + t_size <= PAYLOAD_END` = 0x801FD300, the window minus the 1 KB switch stack the
+core runs on at the top of the outgoing program's stack (CORE-ABI revision of 11-23, `psx-scene-abi`
+`PAYLOAD_END` on SDK branch lane/disc-scenes-1123 50dfa6a7e). Pong, the largest, ends at 0x80065000.
 
 ## The relink (step 1, done)
 
@@ -154,7 +156,7 @@ loads, and the switch replaces the blob's load with the core's.
 | Transition | Disc read under the core | Measured today | Slower? |
 |---|---|---|---|
 | Boot to launcher menu | BIOS loads the launcher, 52 payload sectors today plus the stored core image (about 4 to 5 sectors at the 8,192 to 10,240 B cap, **estimate**), then DEMOTOC's 4 sectors | `launcher` checkpoint at frame 74 on PCSX-ReARMed, 657 on PCSX-Redux (2046e80 PASS json, `cross`); journey `carousel` 56 ticks (baseline). Boot to first frame alone: not measured | **yes, slightly (estimate):** about 5 more BIOS-load sectors (about 33 ms at double speed) and `__core_boot`'s copy and FNV. Kept smallest by the core's 8,192 B target |
-| Launcher to Breakout / Invaders / Pong | the game's payload, 110 / 118 / 170 sectors today | launching to title 139 / 142 / 179 frames on ReARMed, 163 / 166 / 209 on Redux, including the 40 warp and 14 fade frames and the game's init (PASS json `cross`); journeys `launch-breakout` 454, `launch-invaders` 462, `launch-pong` 521 ticks (baseline); the load alone is not measured | **at risk, by about 5 sectors per switch:** each game's payload also stores its own copy of the core after `.data` (CORE-ABI 4.1), which a core entry never uses (it leaves the window alone, 4.3 step 2). If the row's `t_size` covers it, every switch reads about 5 more sectors than today. What keeps it equal: a row `t_size` that stops before the stored core image (place `.psx_core`'s LMA last and have mkdisc write the shorter size), so a core entry loads only what today's blob loads. Against that, the core's 256-sector chunks (PLAN load-speed gate) replace the blob's 64-sector chunks, and the blob copy (14,040 B) goes, which should make the switch faster; not measured |
+| Launcher to Breakout / Invaders / Pong | the game's payload, 110 / 118 / 170 sectors today | launching to title 139 / 142 / 179 frames on ReARMed, 163 / 166 / 209 on Redux, including the 40 warp and 14 fade frames and the game's init (PASS json `cross`); journeys `launch-breakout` 454, `launch-invaders` 462, `launch-pong` 521 ticks (baseline); the load alone is not measured | **at risk, by about 5 sectors per switch:** each game's payload also stores its own copy of the core after `.data` (CORE-ABI 4.1), which a core entry never uses, and the scene-table writer on lane/disc-scenes-1123 sets a row's `t_size` to the whole payload (`crates/psx-iso/src/scenes.rs:329-353`) (it leaves the window alone, 4.3 step 2). If the row's `t_size` covers it, every switch reads about 5 more sectors than today. What keeps it equal: a row `t_size` that stops before the stored core image (place `.psx_core`'s LMA last and have mkdisc write the shorter size), so a core entry loads only what today's blob loads. Against that, the core's 256-sector chunks (PLAN load-speed gate) replace the blob's 64-sector chunks, and the blob copy (14,040 B) goes, which should make the switch faster; not measured |
 | Pong music start | today PVD (LBA 16) and root reads, then XA streams | not measured | not slower; faster if the Data row gives the LBA (the two lookups go) |
 | Every in-game screen (title, pause, results) | none | none (all in RAM) | no |
 
