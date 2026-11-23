@@ -17,12 +17,12 @@ PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=cor
 # formatted panic.
 PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,-Zunstable-options -Cpanic=immediate-abort)
 # RAM the launcher and the games link for, as a `-T` file ahead of psoxide.ld (the way psoxide.ld:16-21
-# asks, so each link map records the value). 0x1FD800 puts STACK_INIT at 0x801FD700 and leaves
-# 0x801FD700..0x80200000 to the scene system's resident core window (cap 10,240 B) and its 256 B handoff
+# asks, so each link map records the value). 0x1FE000 puts STACK_INIT at 0x801FDF00 and leaves
+# 0x801FDF00..0x80200000 to the scene system's resident core window (8,192 B) and its 256 B handoff
 # block. PROVISIONAL: the number comes from the scene-system plan (campaign scene-system-1123, PLAN.md 3.2)
 # and the first real core build may move it. The value is in the file name so a change relinks (cargo
 # sees new RUSTFLAGS). The chain-load blob links by loader/loader.ld and does not use it.
-CORE_RAM_SIZE := 0x1FD800
+CORE_RAM_SIZE := 0x1FE000
 RAM_SIZE_LD := $(BUILD)/ram-size-$(CORE_RAM_SIZE).ld
 LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SIZE_LD) -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
 
