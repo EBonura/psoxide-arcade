@@ -12,6 +12,13 @@
  *   0x80010000 .. t_addr+t_size   target EXE payload (streamed in)
  *   0x801F0000 .. 0x801F8000      this blob (32 KiB budget)
  *   0x801F8000 .. 0x80200000      stack, shared with the launcher
+ *
+ * On the scene-core branch the launcher links with RAM_SIZE_OVERRIDE (see the
+ * Makefile's CORE_RAM_SIZE), so its stack top sits at the core window's base
+ * and its stack reserve now starts below 0x801F8000, overlapping the end of
+ * this 32 KiB budget. The blob itself is 14,040 B and ends 8,232 B below the
+ * reserve, so nothing collides today. The blob retires once the launcher
+ * switches games through the core (scene-system plan, CORE-ABI.md).
  */
 
 LOADER_BASE = 0x801F0000;
