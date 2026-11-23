@@ -16,7 +16,15 @@ PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=cor
 # (__psx_rt_fault_*; `psoxide-size faults` reads them from a RAM dump). PSOXIDE_PANIC_MESSAGES=1 restores the
 # formatted panic.
 PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,-Zunstable-options -Cpanic=immediate-abort)
-LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
+# RAM the launcher and the games link for, as a `-T` file ahead of psoxide.ld (the way psoxide.ld:16-21
+# asks, so each link map records the value). 0x1FD800 puts STACK_INIT at 0x801FD700 and leaves
+# 0x801FD700..0x80200000 to the scene system's resident core window (cap 10,240 B) and its 256 B handoff
+# block. PROVISIONAL: the number comes from the scene-system plan (campaign scene-system-1123, PLAN.md 3.2)
+# and the first real core build may move it. The value is in the file name so a change relinks (cargo
+# sees new RUSTFLAGS). The chain-load blob links by loader/loader.ld and does not use it.
+CORE_RAM_SIZE := 0x1FD800
+RAM_SIZE_LD := $(BUILD)/ram-size-$(CORE_RAM_SIZE).ld
+LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SIZE_LD) -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
 
 # FEATURES: cargo features of the launcher and the three games (`journey-state` is the test disc's
 # read-only observation; the shipping build has none). Each variant wants its own BUILD directory
@@ -101,13 +109,17 @@ $(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
 
 cards: $(CARD_STAMP)
 
-launcher: loader cards
+$(RAM_SIZE_LD):
+	@mkdir -p $(BUILD)
+	printf 'RAM_SIZE_OVERRIDE = %s;\n' $(CORE_RAM_SIZE) > $@
+
+launcher: loader cards $(RAM_SIZE_LD)
 	cd launcher && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
 		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
 
-games: repro-rustc
+games: repro-rustc $(RAM_SIZE_LD)
 	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
 	cd games/invaders && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
 	cd games/magikarp-pong && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
