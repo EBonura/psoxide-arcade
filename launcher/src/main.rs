@@ -281,6 +281,24 @@ static mut READER: SectorReader = SectorReader::new();
 static mut TOC_SECTOR: [u32; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize] =
     [0; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize];
 
+/// The SDK's boot splash, before the launcher's own VRAM goes up (the splash uses some of
+/// its own). Any of Cross, Circle or Start skips it.
+fn show_splash() {
+    // The splash waits on the VBlank counter; the first wait installs it.
+    psx_rt::interrupts::wait_vblank();
+    // SAFETY: nothing else touches the GPU until the splash returns.
+    let mut dma = unsafe { psx_io::periph::GpuDma::steal() };
+    let mut buffers = gpu::display::DoubleBuffer::new(Resolution::R320X240);
+    let mut pad = PadReader::port1();
+    psx_splash::show(
+        gpu::Gpu::from_dma_mut(&mut dma),
+        &mut buffers,
+        "Built with PSoXide",
+        psx_display::Brightness::DEFAULT,
+        || pad.poll().buttons,
+    );
+}
+
 #[no_mangle]
 fn main() {
     tty::println("launcher: booted");
@@ -288,6 +306,7 @@ fn main() {
     psx_rt::interrupts::set_min_flip_vblanks(1);
 
     gpu::init(VideoMode::Ntsc, Resolution::R320X240);
+    show_splash();
     let mut fb = FrameBuffer::new(320, 240);
     gpu::set_draw_area(0, 0, 319, 239);
     gpu::set_draw_offset(0, 0);

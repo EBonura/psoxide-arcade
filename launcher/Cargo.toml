@@ -42,4 +42,6 @@ psx-io   = { path = "../.psoxide/sdk/crates/psx-io" }
 psx-spu  = { path = "../.psoxide/sdk/crates/psx-spu" }
 psx-asset = { path = "../.psoxide/sdk/crates/psx-asset" }
 psx-sfx  = { path = "../.psoxide/sdk/crates/psx-sfx" }
+psx-splash = { path = "../.psoxide/sdk/crates/psx-splash" }
+psx-display = { path = "../.psoxide/sdk/crates/psx-display" }
 disc-toc = { package = "psx-disc-toc", path = "../.psoxide/engine/crates/psx-disc-toc" }
