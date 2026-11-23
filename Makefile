@@ -32,6 +32,17 @@ LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SI
 # link maps, for a feature set it has built before.
 FEATURES ?=
 FEATURE_FLAGS = $(if $(strip $(FEATURES)),--features $(strip $(FEATURES)))
+# LAUNCHER_FEATURES: cargo features of the launcher alone. `scene-core` plays the SDK's boot
+# splash once per disc, from boot-only memory: the launcher links psoxide-boot.ld ahead of
+# psoxide.ld as an ELF (its sections run apart from where they are stored) and psx-exe writes
+# launcher.exe from it by load address, keeping the ELF beside it as launcher.elf. Without it the
+# launcher links exactly as the games do.
+LAUNCHER_FEATURES ?=
+LAUNCHER_BOOT = $(findstring scene-core,$(LAUNCHER_FEATURES))
+LAUNCHER_LINK_FLAGS = $(if $(LAUNCHER_BOOT),-Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SIZE_LD) -Clink-arg=-T$(PSOXIDE)/sdk/psoxide-boot.ld -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld,$(LINK_FLAGS))
+LAUNCHER_FEATURE_FLAGS = $(if $(strip $(FEATURES) $(LAUNCHER_FEATURES)),--features $(subst $(eval) ,$(comma),$(strip $(FEATURES) $(LAUNCHER_FEATURES))))
+comma := ,
+PSX_EXE := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin psx-exe --
 
 LOADER_BLOB := $(OUT)/loader.exe
 LAUNCHER_EXE := $(OUT)/launcher.exe
@@ -117,7 +128,8 @@ launcher: loader cards $(RAM_SIZE_LD)
 	cd launcher && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
 		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
 		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
-		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
+		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LAUNCHER_LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS) $(LAUNCHER_FEATURE_FLAGS)
+	$(if $(LAUNCHER_BOOT),if head -c 4 "$(LAUNCHER_EXE)" | grep -q ELF; then cp "$(LAUNCHER_EXE)" "$(LAUNCHER_EXE:.exe=.elf)" && $(PSX_EXE) "$(LAUNCHER_EXE:.exe=.elf)" "$(LAUNCHER_EXE).part" && mv "$(LAUNCHER_EXE).part" "$(LAUNCHER_EXE)"; fi)
 
 games: repro-rustc $(RAM_SIZE_LD)
 	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)

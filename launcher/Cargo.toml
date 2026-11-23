@@ -18,6 +18,11 @@ path = "src/main.rs"
 # A read-only observation of the launcher for psoxide-test's journeys; never in the shipping disc.
 [features]
 journey-state = []
+# Scene core (campaign scene-system-1123, SCENES.md): as the disc's first program, play the SDK's
+# "Built with PSoXide" splash once at boot, from the SDK's boot-only memory (sdk/psoxide-boot.ld):
+# stored after .data, run above .bss, never resident. Off by default; build it with
+# `make disc LAUNCHER_FEATURES=scene-core`, which links the launcher for it.
+scene-core = ["dep:psx-splash", "dep:psx-display"]
 
 [profile.release]
 # Keep absolute host paths out of the shipped binary. rustc records the
@@ -43,3 +48,5 @@ psx-spu  = { path = "../.psoxide/sdk/crates/psx-spu" }
 psx-asset = { path = "../.psoxide/sdk/crates/psx-asset" }
 psx-sfx  = { path = "../.psoxide/sdk/crates/psx-sfx" }
 disc-toc = { package = "psx-disc-toc", path = "../.psoxide/engine/crates/psx-disc-toc" }
+psx-splash = { path = "../.psoxide/sdk/crates/psx-splash", optional = true }
+psx-display = { path = "../.psoxide/sdk/crates/psx-display", optional = true }

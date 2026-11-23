@@ -286,7 +286,7 @@ fn main() {
     tty::println("launcher: booted");
     // The SDK caps presentation at 30 fps by default; the launcher keeps flipping every VBlank.
     psx_rt::interrupts::set_min_flip_vblanks(1);
-
+    boot::splash();
     gpu::init(VideoMode::Ntsc, Resolution::R320X240);
     let mut fb = FrameBuffer::new(320, 240);
     gpu::set_draw_area(0, 0, 319, 239);
@@ -827,3 +827,7 @@ fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
         )
     }
 }
+
+// `scene-core`'s boot splash. Declared last, and called from a line that was blank, so no line of
+// the default build moves.
+mod boot;
