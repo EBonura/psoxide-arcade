@@ -11,9 +11,9 @@ repository = "EBonura/psoxide-arcade"
 name = "ship"
 out = "build/ship"
 commands = [["make", "disc", "BUILD={out}/work", "DIST={out}"]]
-collect = { "launcher.exe" = "build/ship/work/guest/mipsel-sony-psx/release/launcher.exe", "game-breakout.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.exe", "game-invaders.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.exe", "game-magikaaaaaarp-pong.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.exe" }
+collect = { "launcher.exe" = "build/ship/work/guest/mipsel-sony-psx/release/launcher.exe", "launcher.map" = "build/ship/work/guest/mipsel-sony-psx/release/launcher.map", "game-breakout.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-breakout.exe", "game-invaders.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-invaders.exe", "game-magikaaaaaarp-pong.exe" = "build/ship/work/guest/mipsel-sony-psx/release/game-magikaaaaaarp-pong.exe" }
 disc = "psoxide-arcade.cue"
-map = "work/guest/mipsel-sony-psx/release/launcher.map"
+map = "launcher.map"
 layout = false
 layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
 
@@ -23,9 +23,9 @@ layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain
 name = "journey"
 out = "build/journey"
 commands = [["make", "disc", "FEATURES=journey-state", "BUILD={out}/work", "DIST={out}"]]
-collect = { "launcher.exe" = "build/journey/work/guest/mipsel-sony-psx/release/launcher.exe" }
+collect = { "launcher.exe" = "build/journey/work/guest/mipsel-sony-psx/release/launcher.exe", "launcher.map" = "build/journey/work/guest/mipsel-sony-psx/release/launcher.map" }
 disc = "psoxide-arcade.cue"
-map = "work/guest/mipsel-sony-psx/release/launcher.map"
+map = "launcher.map"
 layout = false
 layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
 
