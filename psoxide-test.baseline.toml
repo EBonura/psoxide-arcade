@@ -1,38 +1,38 @@
 # Written by `psoxide-test bless`; edit only by blessing again (decision 4: a bar changes by editing
 # psoxide-test.toml with a reason, never by hand-editing these numbers).
 schema = 1
-blessed_commit = "91544dfb1e305a5c69de31388aecd53e9c516b98"
-sdk_pin = "f590e3619afe38477125b93fd14a563d1606e1ef"
+blessed_commit = "6d5ad9b43dccde81c8c515a5e530617a9066a1e1"
+sdk_pin = "80d432926e69dc0bc6ac328c3c9b143a8d875754"
 
 [size.breakout]
-text = 151652
+text = 152520
 data = 73288
 bss = 820
-free = 1764628
+free = 1763764
 
 [size.invaders]
-text = 158404
+text = 159272
 data = 80792
 bss = 820
-free = 1750372
+free = 1749508
 
 [size.pong]
-text = 160412
+text = 161280
 data = 185928
 bss = 788
-free = 1643268
+free = 1642404
 
 [size.ship]
-text = 49568
+text = 50704
 data = 43176
 bss = 2212
-free = 1895444
+free = 1894308
 
 [speed.breakout]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [453168, 453187, 453212, 453240, 453277, 453373, 453464, 453519]
-frame_work_p99 = [455658, 455658, 455658, 455658, 456943, 456943, 456943, 456943]
+work_per_frame = [452881, 452900, 452923, 452951, 452990, 453090, 453182, 453238]
+frame_work_p99 = [455209, 455209, 455208, 455208, 455451, 456063, 456063, 456063]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
 layouts = []
 
@@ -47,8 +47,8 @@ gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 [speed.invaders]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [459514, 459515, 459518, 459521, 459527, 459531, 459548, 459558]
-frame_work_p99 = [461202, 461202, 461267, 461267, 461267, 461267, 461445, 461267]
+work_per_frame = [459573, 459575, 459578, 459580, 459586, 459591, 459605, 459614]
+frame_work_p99 = [461193, 461193, 461193, 461193, 461193, 461194, 461251, 461318]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
 layouts = []
 
@@ -63,8 +63,8 @@ gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 [speed.pong]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [500, 500, 500, 500, 500, 500, 500, 500]
-work_per_frame = [518722, 518600, 518301, 518070, 517624, 517008, 516670, 516367]
-frame_work_p99 = [529814, 529814, 529814, 529814, 529814, 529814, 529814, 529815]
+work_per_frame = [518705, 518583, 518283, 518053, 517607, 516991, 516652, 516350]
+frame_work_p99 = [529437, 529437, 529437, 529437, 529437, 529437, 529437, 529438]
 vblanks = ["1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499"]
 layouts = []
 
@@ -87,7 +87,7 @@ open_loop = 0
 clock_waits = 0
 
 [journeys.launch-invaders]
-ticks = 590
+ticks = 591
 open_loop = 0
 clock_waits = 0
 
@@ -104,7 +104,7 @@ clock_waits = 0
 [host]
 
 [maps]
-breakout = "bc357530134e5002defbbee951b541f95a8074f0260ed9519379fc69d1c41257"
-invaders = "8791cc1802e34fe647fb31dcdbccdea20a94bd8222d70d820a5dc20271108a0c"
-pong = "600b104d3011beaf7d0c1f50b41be7388c2b038fe2aed7b4cd95c99e1e7666f6"
-ship = "154b2de621667b8217aad4e062bc8ab8a5052e55129277549433a22811e2f8db"
+breakout = "eae31f588cff6dda391facea3c34aac7b1d7ab8c0c8a103b88330a8988649345"
+invaders = "2c087adc3f960e676afef9f8d97db1f532953d72ff22edb5e57fcfff25638002"
+pong = "b30e257710885276b3f13be2f12331681f1b4542824c71b426ff45ebcc922da9"
+ship = "ccc8b1c377b5a6e6aacbb9afd5fbeb313144686183dfc21cd9954f8353dbdea1"
