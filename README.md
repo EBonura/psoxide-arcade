@@ -72,8 +72,13 @@ then runs the same `launch` command.
 
 The carousel geometry and PSXDEMO1 catalog/checksum format are shared
 engine crates (`psx-carousel` and `psx-disc-toc`) in the locked `.psoxide`
-hydration. `make psoxide` verifies the imported source receipt; the launcher,
-loader and host packer no longer maintain separate collection-support copies.
+hydration. `make psoxide` verifies the imported source receipt.
+
+Every program runs on the SDK's scene core (`SCENES.md`). The disc is a scene disc
+pressed by the SDK's `mkisopsx --scenes` from `scenes.manifest`: `SCENES.TBL` at
+LBA 22, the launcher at 23, the three games as Programs of the same table, which
+the launcher starts with a core switch. `mkdisc toc` writes the launcher's table
+of contents (compiled in) and `mkdisc install` installs the disc.
 
 ## Controls
 
@@ -92,10 +97,9 @@ made and how to re-author it.
 
 ## Hardware status
 
-The chain-loader is inherited from the hardware-proven demo-disc path, but the
-nested route still needs one owner-console burn: selector, all three launches,
-Magikarp audio (XA, tested only in the emulator so far), and reset back to the
-outer menu.
+The scene-core route (standalone and nested in the demo disc) is tested in the
+PSoXide emulator only; it still needs one owner-console run: selector, all three
+launches, Magikarp audio (XA), and reset back to the outer menu.
 
 ## Recent changes
 

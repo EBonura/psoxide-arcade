@@ -1,5 +1,17 @@
 # PSoXide Arcade on the scene core
 
+**Modular core (11-24, SDK f590e3619afe, CORE_HASH 91d64895): built.** One disc, one table
+(`scenes.manifest`, pressed by mkisopsx): image/scene 0 the launcher (`PSX.EXE`), 1 BREAKOUT, 2
+INVADERS, 3 PONG, each a Program with one START scene. The launcher reads the table at boot and starts
+the chosen game with `psx_core::link::switch` (scene = the table-of-contents entry's `exe_lba` field,
+written by `mkdisc toc`); no game switches anywhere. On the demo disc the Arcade is a member of the demo
+launcher's table: the core adds a row's member base to the disc base at every program switch
+(`lba_offset += I_BASE`), so a game the Arcade starts (member base 0 in the Arcade's table) keeps the
+Arcade's base and reads the Arcade's files. The splash plays on a BIOS boot only (psx-splash skips it
+on a core entry). Before the switch the launcher leaves a static loading frame (the game's name) in
+VRAM's loading-frame rectangle. The sections below are the earlier plan and measurements, kept as
+recorded.
+
 **Window update (11-23):** the branch now links for the 8,192 B window, `RAM_SIZE_OVERRIDE = 0x1FE000`, core at **0x801FDF00..0x801FFF00**. The figures below were taken at the earlier 10,240 B cap (0x1FD800, SP 0x801FD700) and are kept as measured; at 0x1FE000, computed, not built: each program's free RAM is 2,048 B higher than the 0x1FD800 figures below and its SP is 0x801FDF00; text, data and bss unchanged. The blob's region map in loader/loader.ld still holds (the stack reserve now starts at 0x801F5F00).
 
 How the Arcade (a launcher, three bare EXEs and a chain-load blob) maps onto the SDK's scene system

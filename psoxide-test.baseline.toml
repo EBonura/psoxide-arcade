@@ -1,45 +1,45 @@
 # Written by `psoxide-test bless`; edit only by blessing again (decision 4: a bar changes by editing
 # psoxide-test.toml with a reason, never by hand-editing these numbers).
 schema = 1
-blessed_commit = "d12e8f676549dfa4ae317d13f9ba13c725695631"
-sdk_pin = "6bfe478ff0e0c6e226cdf67b164df311c1658fec"
+blessed_commit = "91544dfb1e305a5c69de31388aecd53e9c516b98"
+sdk_pin = "f590e3619afe38477125b93fd14a563d1606e1ef"
 
 [size.breakout]
-text = 150004
-data = 73272
-bss = 824
-free = 1774472
+text = 151652
+data = 73288
+bss = 820
+free = 1764628
 
 [size.invaders]
-text = 158580
-data = 81400
-bss = 828
-free = 1757764
+text = 158404
+data = 80792
+bss = 820
+free = 1750372
 
 [size.pong]
-text = 161220
-data = 186728
-bss = 796
-free = 1649828
+text = 160412
+data = 185928
+bss = 788
+free = 1643268
 
 [size.ship]
-text = 54400
-data = 51048
-bss = 8344
-free = 1884792
+text = 49568
+data = 43176
+bss = 2212
+free = 1895444
 
 [speed.breakout]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [452869, 452888, 452911, 452937, 452973, 453069, 453159, 453214]
-frame_work_p99 = [455595, 455595, 455595, 455595, 455595, 455595, 455595, 455595]
+work_per_frame = [453168, 453187, 453212, 453240, 453277, 453373, 453464, 453519]
+frame_work_p99 = [455658, 455658, 455658, 455658, 456943, 456943, 456943, 456943]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
 layouts = []
 
 [speed.breakout.identity]
-tape = "pgo/breakout.pxtape"
-tape_sha256 = "07ee7de9fd50a6cac8755f05e6818a8a03b7a4667e0296832082718bb91fc630"
-window = "polls 760..1000"
+tape = "pgo/breakout.anchored.pxtape"
+tape_sha256 = "98c160467b47203275e24145545aed177e8048ef09b93bb8dea581ca2282d346"
+window = 'anchored at {"kind":"ram","op":"nonzero","size":4,"sym":"ARCADE_MENU_READY"} within 600 polls; polls 757..997 from the anchor'
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 launch_args = []
 gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
@@ -47,15 +47,15 @@ gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 [speed.invaders]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [240, 240, 240, 240, 240, 240, 240, 240]
-work_per_frame = [18683, 18678, 18664, 18671, 18693, 18693, 18788, 18803]
-frame_work_p99 = [21376, 21376, 21376, 21376, 21376, 21311, 21884, 21884]
+work_per_frame = [459514, 459515, 459518, 459521, 459527, 459531, 459548, 459558]
+frame_work_p99 = [461202, 461202, 461267, 461267, 461267, 461267, 461445, 461267]
 vblanks = ["1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239", "1:239"]
 layouts = []
 
 [speed.invaders.identity]
-tape = "pgo/invaders.pxtape"
-tape_sha256 = "eb99206e0875019f949ab58326725ec39bc6ee2317e55b3839cc82205dd0e50e"
-window = "polls 760..1000"
+tape = "pgo/invaders.anchored.pxtape"
+tape_sha256 = "f7f501d4912586c30563983868b34dea67d61f60286de70129279fb9554bc2ed"
+window = 'anchored at {"kind":"ram","op":"nonzero","size":4,"sym":"ARCADE_MENU_READY"} within 600 polls; polls 757..997 from the anchor'
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 launch_args = []
 gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
@@ -63,48 +63,48 @@ gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 [speed.pong]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 flips = [500, 500, 500, 500, 500, 500, 500, 500]
-work_per_frame = [27414, 27290, 27201, 27211, 27225, 27241, 27255, 27268]
-frame_work_p99 = [50235, 50199, 50199, 50199, 50199, 50199, 50200, 50200]
+work_per_frame = [518722, 518600, 518301, 518070, 517624, 517008, 516670, 516367]
+frame_work_p99 = [529814, 529814, 529814, 529814, 529814, 529814, 529814, 529815]
 vblanks = ["1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499", "1:499"]
 layouts = []
 
 [speed.pong.identity]
-tape = "pgo/pong.pxtape"
-tape_sha256 = "c8bc12d6adca3db2590676a30faceaac1db6081573224912cb744ee9347a7c25"
-window = "polls 850..1350"
+tape = "pgo/pong.anchored.pxtape"
+tape_sha256 = "499a286c718bfe108e0d8ccf65fbb4500eb8d2e92cec158dad310f9d785248d3"
+window = 'anchored at {"kind":"ram","op":"nonzero","size":4,"sym":"ARCADE_MENU_READY"} within 600 polls; polls 847..1347 from the anchor'
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 launch_args = []
 gate_revision = "97cd078f9d2a33eb6aff274541bccc118f5b12e8"
 
 [journeys.carousel]
-ticks = 56
+ticks = 205
 open_loop = 0
 clock_waits = 0
 
 [journeys.launch-breakout]
-ticks = 454
+ticks = 584
 open_loop = 0
 clock_waits = 0
 
 [journeys.launch-invaders]
-ticks = 462
+ticks = 590
 open_loop = 0
 clock_waits = 0
 
 [journeys.launch-pong]
-ticks = 521
+ticks = 642
 open_loop = 0
 clock_waits = 0
 
 [journeys.pad-refusal]
-ticks = 136
+ticks = 284
 open_loop = 0
 clock_waits = 0
 
 [host]
 
 [maps]
-breakout = "bebd4210be8dd5c80e61b04a426a1767490c5ea162ffdbb6ff582cde9d15a4d2"
-invaders = "88d02f60c2ecb021daa4227754f7b3272ad927fd44ee4e76c9f877404e0bca14"
-pong = "61f137d86d9aa03a0d44b6723d3f61f661ff39e9774ebd526e8aef999dbe42c2"
-ship = "dff15c3434bdbc124361877fe994dd3d4cd0424438bf62908bc1bfa8b8ffa462"
+breakout = "bc357530134e5002defbbee951b541f95a8074f0260ed9519379fc69d1c41257"
+invaders = "8791cc1802e34fe647fb31dcdbccdea20a94bd8222d70d820a5dc20271108a0c"
+pong = "600b104d3011beaf7d0c1f50b41be7388c2b038fe2aed7b4cd95c99e1e7666f6"
+ship = "154b2de621667b8217aad4e062bc8ab8a5052e55129277549433a22811e2f8db"
