@@ -4,7 +4,7 @@
     "sdk": {
       "repository": "EBonura/PSoXide",
       "revision": "f590e3619afe38477125b93fd14a563d1606e1ef",
-      "guest_tree": "3c4384156863b2c7e1692ebb466e5ee6f154617021d6b63c6c2f9b58ecc8d767",
+      "guest_tree": "f435fbc22ba4278fec42db8d6ae8434afc3d0b2a1763a0160c31a7001ecf0c13",
       "paths": [
         "sdk",
         "crates",

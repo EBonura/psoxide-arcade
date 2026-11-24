@@ -15,7 +15,7 @@ collect = { "launcher.exe" = "build/ship/work/guest/mipsel-sony-psx/release/laun
 disc = "psoxide-arcade.cue"
 map = "launcher.map"
 layout = false
-layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
+layout_reason = "no psoxide-pgo layout or profile: every program builds through psoxide-pgo apply --variant off and the disc is pressed by mkisopsx --scenes"
 
 # The journeys' disc: the same four programs with a read-only observation each (cargo feature
 # journey-state: ARCADE_LAUNCHER_JOURNEY, BREAKOUT_JOURNEY, INVADERS_JOURNEY, PONG_JOURNEY in the maps).
@@ -27,7 +27,7 @@ collect = { "launcher.exe" = "build/journey/work/guest/mipsel-sony-psx/release/l
 disc = "psoxide-arcade.cue"
 map = "launcher.map"
 layout = false
-layout_reason = "no psoxide-pgo layout or profile: the arcade is linked by plain cargo and its own mkdisc"
+layout_reason = "no psoxide-pgo layout or profile: every program builds through psoxide-pgo apply --variant off and the disc is pressed by mkisopsx --scenes"
 
 # The breakout program's link, for its size bar: it is linked by the shipping build, so this build only
 # copies its map from there (the harness judges one map per build).
@@ -94,7 +94,7 @@ dir = "tools/mkdisc"
 # Load-delay hazards in guest asm (fleet rule since SDK 580daa02), with the pin's own scanner.
 [[host]]
 name = "check-mfc0"
-command = ["cargo", "run", "-q", "--release", "--locked", "--manifest-path", ".psoxide/tools/psoxide-hazard/Cargo.toml", "--bin", "check-mfc0", "--", "launcher", "loader", "games"]
+command = ["cargo", "run", "-q", "--release", "--locked", "--manifest-path", ".psoxide/tools/psoxide-hazard/Cargo.toml", "--bin", "check-mfc0", "--", "launcher", "games"]
 
 [[clean]]
 build = "ship"
