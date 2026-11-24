@@ -89,7 +89,7 @@ help:
 # tool is installed once per revision under target/. COMPONENTS_REV is the
 # lock's SDK revision (the psoxide-components binary first exists at e6ec267).
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
-COMPONENTS_REV := 5688e778aa6708c054203eb5d2fc544dcbd6ef3d
+COMPONENTS_REV := 80d432926e69dc0bc6ac328c3c9b143a8d875754
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
 # The SDK's build driver and its repro wrapper, built once per pin under .psoxide/target.
 sdk-tools: psoxide
