@@ -27,6 +27,9 @@
 #![allow(static_mut_refs)]
 
 extern crate psx_rt;
+// The scene core (SCENES.md): its `__core_boot` is this program's entry, its image rides in the EXE.
+// No code calls it: the game starts nothing and is started by the launcher's core switch.
+extern crate psx_core;
 
 use psx_engine::{
     button, sfx, App, Config, Ctx, MicrogameAction, MicrogameScreen, MicrogameShell, Scene,

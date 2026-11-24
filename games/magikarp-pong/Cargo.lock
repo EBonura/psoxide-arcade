@@ -13,6 +13,7 @@ name = "game-magikaaaaaarp-pong"
 version = "0.1.0"
 dependencies = [
  "psx-asset",
+ "psx-core",
  "psx-engine",
  "psx-fmv",
  "psx-font",
@@ -43,6 +44,14 @@ dependencies = [
  "psx-hw",
  "psx-io",
  "psx-rt",
+]
+
+[[package]]
+name = "psx-core"
+version = "0.1.0"
+dependencies = [
+ "psx-hw",
+ "psx-scene-abi",
 ]
 
 [[package]]
@@ -193,6 +202,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "psx-scene-abi"
+version = "0.1.0"
+
+[[package]]
 name = "psx-settings"
 version = "0.1.0"
 dependencies = [
@@ -220,6 +233,7 @@ dependencies = [
  "psx-gpu",
  "psx-pad",
  "psx-rt",
+ "psx-scene-abi",
  "psx-vram",
 ]
 

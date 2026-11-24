@@ -1,0 +1,43 @@
+# This collection's exceptions to the SDK's architecture gate (`psx-gate`, the SDK's sdk/docs/GATE.md),
+# one file for its four programs (launcher, game-breakout, game-invaders, game-magikaaaaaarp-pong). A
+# ratchet: nothing is added, an entry that no longer matches the tree fails (delete it), a count only
+# goes down.
+
+# The pad reader and the analog-mode lock the launcher has used since before psx-pad's current API, and
+# the presentation cap's old name (the launcher flips every VBlank). Moving them is behaviour work for
+# the menu (pad timing, the analog notice), outside the scene-core repin.
+[[exception]]
+program = "launcher"
+kind = "deprecated-use"
+item = "launcher/src/main.rs"
+count = 5
+remove = "unscheduled"
+
+[[exception]]
+program = "launcher"
+kind = "deprecated-use"
+item = "launcher/src/boot.rs"
+count = 1
+remove = "unscheduled"
+
+# Each game's one deprecated call (as above, outside the repin).
+[[exception]]
+program = "game-breakout"
+kind = "deprecated-use"
+item = "games/breakout/src/main.rs"
+count = 1
+remove = "unscheduled"
+
+[[exception]]
+program = "game-invaders"
+kind = "deprecated-use"
+item = "games/invaders/src/main.rs"
+count = 1
+remove = "unscheduled"
+
+[[exception]]
+program = "game-magikaaaaaarp-pong"
+kind = "deprecated-use"
+item = "games/magikarp-pong/src/main.rs"
+count = 1
+remove = "unscheduled"

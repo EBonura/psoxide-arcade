@@ -1,11 +1,10 @@
-//! The boot splash, for `scene-core` (SCENES.md).
+//! The boot splash (SCENES.md).
 //!
 //! As the disc's first program, the launcher plays the SDK's "Built with PSoXide" splash once at
-//! boot, from the SDK's boot-only memory (sdk/psoxide-boot.ld, linked by the Makefile when
-//! LAUNCHER_FEATURES has `scene-core`): psx_splash's code and data are stored after `.data` in the
-//! EXE, loaded with it in the same read, moved above `.bss` by psx-rt's `__boot_entry` and run from
-//! there. Nothing of it stays resident. The three games play none. Without the feature `splash`
-//! does nothing and the launcher is the default build, byte for byte.
+//! boot, from the SDK's boot-only memory (sdk/psoxide-boot.ld): psx_splash's code and data are
+//! stored after `.data` in the EXE, loaded with it in the same read, moved above `.bss` by psx-rt's
+//! `__boot_entry` and run from there. Nothing of it stays resident. The three games play none. On a
+//! core entry (the demo disc's launcher started the Arcade) psx-splash returns at once.
 
 /// Play the splash once, before the launcher sets up its own display: on a GPU of its own, so
 /// the launcher's `gpu::init` and uploads (its BASIC font sits where the splash puts the same
@@ -13,9 +12,8 @@
 /// after the pad's first poll (the analog handshake runs before interrupts are on). The pad is
 /// read with the launcher's own `PadReader`, so the splash pulls in no second pad driver, and
 /// this function is boot-only too (`.boot_only`), so its setup leaves no code in `main`.
-#[cfg(feature = "scene-core")]
 #[inline(never)]
-#[link_section = ".boot_only.launcher_splash"]
+#[link_section = ".text.boot_only.launcher_splash"]
 #[allow(deprecated)] // `PadReader::poll`, as `main` reads the pad
 pub fn splash() {
     use psx_gpu::display::{DisplayConfig, DoubleBuffer, Resolution, VideoMode};
@@ -39,8 +37,3 @@ pub fn splash() {
         || pad.poll().buttons,
     );
 }
-
-/// Without `scene-core` the launcher plays no splash.
-#[cfg(not(feature = "scene-core"))]
-#[inline(always)]
-pub fn splash() {}

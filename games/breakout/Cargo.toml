@@ -34,6 +34,7 @@ psx-font   = { path = "../../.psoxide/sdk/crates/psx-font" }
 psx-fx     = { path = "../../.psoxide/sdk/crates/psx-fx" }
 psx-gpu    = { path = "../../.psoxide/sdk/crates/psx-gpu" }
 psx-rt     = { path = "../../.psoxide/sdk/crates/psx-rt" }
+psx-core   = { path = "../../.psoxide/sdk/crates/psx-core", features = ["link"] }
 psx-settings = { path = "../../.psoxide/sdk/crates/psx-settings" }
 psx-sfx    = { path = "../../.psoxide/sdk/crates/psx-sfx" }
 psx-spu    = { path = "../../.psoxide/sdk/crates/psx-spu" }

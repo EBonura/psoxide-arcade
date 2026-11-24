@@ -1,15 +1,16 @@
 //! PSoXide Arcade boot menu.
 //!
-//! Reads the disc's table of contents ([`disc_toc`]), presents the collection
-//! as a dedicated arcade cabinet, and chain-loads the selected game. The outer
-//! PSoXide Demo Disc already owns the carousel metaphor; this nested launcher
-//! deliberately uses its own CRT, cabinet, jukebox, and game-bank language.
+//! Presents the collection from its table of contents ([`disc_toc`], compiled in) as a dedicated
+//! arcade cabinet, and starts the selected game with a scene-core switch. The outer PSoXide Demo
+//! Disc already owns the carousel metaphor; this nested launcher deliberately uses its own CRT,
+//! cabinet, jukebox, and game-bank language.
 //!
-//! The chain-load itself cannot happen here: every PSoXide program links to
-//! `0x80010000`, which is where this launcher is running, so streaming a game
-//! in would overwrite the code doing the streaming. Instead the `loader` crate
-//! is built separately at a high base address, embedded below as raw bytes,
-//! copied up, and jumped to. See `loader/loader.ld`.
+//! Every program on the disc runs on the SDK's scene core (`psx-core`, SCENES.md). The disc's
+//! `SCENES.TBL` (scenes.manifest) has the launcher as scene 0 and each game as a Program of the same
+//! table; the launcher reads the table once at boot and `psx_core::link::switch` loads the chosen
+//! game below the core's window, checks it and jumps to it. On the demo disc the Arcade is a member
+//! of the demo launcher's table and keeps its own: the core carries the member's disc base into the
+//! game it starts. There is no way back: no game has a scene that starts the launcher.
 
 #![no_std]
 #![no_main]
@@ -18,22 +19,22 @@ extern crate psx_rt;
 
 mod paint;
 
-use disc_toc::{Entry, Header, MAX_ENTRIES, TOC_BYTES, TOC_LBA};
+use disc_toc::{Entry, Header, MAX_ENTRIES, TOC_BYTES};
 use psx_font::{
     fonts::{BASIC, SPLEEN_5X8},
     FontAtlas,
 };
 use psx_gpu::{self as gpu, display::Resolution, display::VideoMode, framebuf::FrameBuffer};
-use psx_io::disc_base;
-use psx_pack::cd::{SectorReader, SECTOR_WORDS};
+use psx_pack::cd::SECTOR_WORDS;
 use psx_pad::{button, require_analog_port1, AnalogRequirement, ButtonState, PadMode, PadReader};
 use psx_rt::tty;
 use psx_sfx::{Bank, OneShot, Player};
 use psx_spu::{Adsr, Pitch, SpuAddr, Voice, Volume};
 use psx_vram::{Clut, TextureDepth, TexturePage};
 
-/// The chain-load blob, linked at `LOADER_BASE` by `loader/loader.ld`.
-const LOADER_BLOB: &[u8] = include_bytes!(env!("LOADER_BLOB"));
+/// The table of contents (`mkdisc toc`): names, blurbs and versions; entry `i`'s `exe_lba` field
+/// is the scene that starts it.
+static TOC: &[u8; TOC_BYTES] = include_bytes!(env!("ARCADE_TOC"));
 
 /// Which pressing this is: `git describe` at build time, on screen in the
 /// header so every photo and recording says which disc is in the console.
@@ -41,13 +42,6 @@ const DISC_VERSION: &str = match option_env!("DISC_VERSION") {
     Some(v) => v,
     None => "DEV",
 };
-
-/// Where the blob expects to run. Must match `loader.ld`.
-const LOADER_BASE: u32 = 0x801F_0000;
-
-/// Blob budget, also from `loader.ld`. Overrunning it would walk into the
-/// stack, so check rather than trust.
-const LOADER_LIMIT: usize = 32 * 1024;
 
 /// Frames between attempts to put a pad that is not in analog mode there.
 /// Each attempt holds the CPU for a few frames (the commands are spaced the
@@ -276,10 +270,15 @@ mod journey_state;
 pub static mut ARCADE_LAUNCHER_JOURNEY: [u32; journey_state::words(9)] =
     [0; journey_state::words(9)];
 
-// The reader owns a one-sector bounce buffer; keep it off the 32 KiB stack.
-static mut READER: SectorReader = SectorReader::new();
-static mut TOC_SECTOR: [u32; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize] =
-    [0; SECTOR_WORDS * disc_toc::TOC_SECTORS as usize];
+/// 1 from the first menu frame drawn with a DualShock accepted and the collection listed: the
+/// launcher's first usable screen. A collection disc's launch gate reads it from the shipping build
+/// (its `ready` state); nothing in the launcher reads it.
+#[no_mangle]
+pub static mut ARCADE_MENU_READY: u32 = 0;
+
+/// The launcher's RAM copy of `SCENES.TBL`, which every core switch takes: the header and every
+/// row (`16 + 8 * (scenes + images)` words, at most one sector).
+static mut SCENES: [u32; SECTOR_WORDS] = [0; SECTOR_WORDS];
 
 #[no_mangle]
 fn main() {
@@ -320,8 +319,13 @@ fn main() {
         CARDS_CLUTS,
     );
 
+    // The scene table, read now while the drive is still at the boot sectors: a launch then
+    // starts its load at once. A disc without a readable table shows the menu's error line.
+    // SAFETY: single-threaded; `main` runs once and only `boot` reads the table after this.
+    let scenes = unsafe { &mut *core::ptr::addr_of_mut!(SCENES) };
+    let table_ok = psx_core::link::read_table(scenes).is_ok();
     let mut all_entries = [Entry::new("", 0, 0, 0); MAX_ENTRIES];
-    let header = read_toc(&mut all_entries);
+    let header = if table_ok { disc_toc::decode(TOC, &mut all_entries) } else { None };
     let all_count = header.map_or(0, |h| h.count);
     // What the carousel actually shows. Gated entries stay out of it until
     // the cheat code below rebuilds it with `unlocked` set; the credits ride
@@ -486,7 +490,7 @@ fn main() {
             warp += 1;
             if warp >= WARP_FRAMES {
                 // Never returns when the disc is readable.
-                boot(&entries[launch_index], &mut fb);
+                boot(&entries[launch_index], &mut fb, &font, scenes);
             }
         }
         #[cfg(feature = "journey-state")]
@@ -559,6 +563,10 @@ fn main() {
         gpu::draw_sync();
         psx_rt::interrupts::wait_vblank();
         fb.swap();
+        if analog_ok && count > 0 && warp < 0 {
+            // SAFETY: single-threaded; a plain store nothing else writes.
+            unsafe { core::ptr::addr_of_mut!(ARCADE_MENU_READY).write_volatile(1) };
+        }
     }
 }
 
@@ -733,7 +741,6 @@ fn draw_music_panel(font: &FontAtlas) {
     paint::level_meter_beat(METER_X, METER_BASE, 72);
 }
 
-/// Read the table of contents. `None` if the disc has none.
 /// Copy the entries the carousel should show into `out` and append the
 /// credits card: everything when `unlocked`, everything but the gated ones
 /// before then. Returns how many cards that is.
@@ -757,77 +764,48 @@ fn visible_entries(
     n
 }
 
-fn read_toc(entries: &mut [Entry; MAX_ENTRIES]) -> Option<Header> {
-    // SAFETY: single-threaded, polled; `main` runs once and nothing else
-    // touches these statics.
-    let reader = unsafe { &mut *core::ptr::addr_of_mut!(READER) };
-    let sector = unsafe { &mut *core::ptr::addr_of_mut!(TOC_SECTOR) };
-
-    // The table spans more than one sector now; `read_sector` walks the same
-    // ReadN stream, so they arrive back to back.
-    let mut ok = unsafe { reader.prepare() && reader.start_read(TOC_LBA) };
-    for chunk in sector.chunks_exact_mut(SECTOR_WORDS) {
-        let slot: &mut [u32; SECTOR_WORDS] = chunk.try_into().expect("exact chunks");
-        ok = ok && unsafe { reader.read_sector(slot) };
-    }
-    unsafe { reader.stop() };
-    if !ok {
-        return None;
-    }
-    // SAFETY: a [u32; 512] is 2048 bytes; the target is little-endian, so the
-    // word buffer and the on-disc byte order agree.
-    let bytes: &[u8; TOC_BYTES] =
-        unsafe { &*(sector.as_ptr() as *const u8 as *const [u8; TOC_BYTES]) };
-    disc_toc::decode(bytes, entries)
-}
-
-/// Copy the chain-load blob high and jump to it. Never returns while the disc
-/// is readable; the blob paints the screen red and stops if it is not.
-fn boot(entry: &Entry, fb: &mut FrameBuffer) -> ! {
+/// Fade the menu out, leave the loading frame on screen and start `entry`'s scene with a core
+/// switch. Never returns: the core either runs the game or, when it refuses the switch (a disc
+/// whose table disagrees with the launcher, a game on another core), shows its fatal screen
+/// with the code.
+fn boot(entry: &Entry, fb: &mut FrameBuffer, font: &FontAtlas, scenes: &mut [u32]) -> ! {
     // Fade rather than cut. Averaging black over a buffer halves it, and each
     // buffer comes round every other frame, so seven passes each takes the
-    // picture to a hundred and twenty-eighth before the loader takes over.
+    // picture to a hundred and twenty-eighth before the load starts.
     for _ in 0..FADE_FRAMES {
         paint::fade_step();
         gpu::draw_sync();
         psx_rt::interrupts::wait_vblank();
         fb.swap();
     }
+    show_loading_frame(entry, fb, font);
+    tty::println("launcher: core switch");
+    let code = psx_core::link::switch(entry.exe_lba, &[0; 4], scenes);
+    psx_core::link::fatal(code)
+}
 
-    assert!(LOADER_BLOB.len() <= LOADER_LIMIT, "loader blob too large");
-    tty::println("launcher: chain-loading");
-
-    // Let the GPU finish before the blob resets it out from under whatever is
-    // still on screen.
-    gpu::draw_sync();
-
-    // SAFETY: `LOADER_BASE` is above every game's payload (mkdisc enforces
-    // that) and below the stack, so nothing live is being overwritten. The
-    // blob is position-dependent and linked for exactly this address.
-    unsafe {
-        core::ptr::copy_nonoverlapping(
-            LOADER_BLOB.as_ptr(),
-            LOADER_BASE as *mut u8,
-            LOADER_BLOB.len(),
-        );
-        psx_rt::cache::flush_instruction_cache();
-        let blob: unsafe extern "C" fn(u32, u32, u32, u32) -> ! =
-            core::mem::transmute(LOADER_BASE as usize);
-        // The copied loader is its own linked image, so its SectorReader has
-        // no access to this launcher's installed disc base. Resolve the EXE
-        // LBA here; pass the combined data/audio bases separately for the
-        // child runtime to install at _start.
-        blob(
-            disc_base::shift_lba(entry.exe_lba),
-            disc_base::shift_lba(entry.lba_offset),
-            entry
-                .cdda_track_base
-                .wrapping_add(disc_base::cdda_track_base() as u32),
-            entry.payload_fnv,
-        )
+/// The one static frame a launch leaves up (CORE-ABI, "What every program may assume on entry"):
+/// the core keeps VRAM's loading-frame rectangle (`psx_io::gpu::LOADING_FRAME`, 320x240 at (0,0))
+/// and the display through the load and the game's start, until the game's first display set-up
+/// clears it. So the frame is drawn into the buffer at (0,0) and is the one on screen when the
+/// switch is called. The fonts sit outside the rectangle, in texture pages from x 320.
+fn show_loading_frame(entry: &Entry, fb: &mut FrameBuffer, font: &FontAtlas) {
+    let (_, y0, ..) = psx_io::gpu::LOADING_FRAME;
+    // Double-buffered at y 0 and 240: draw until the frame lands in the buffer at (0,0), each one
+    // shown before the next is drawn (at most two frames).
+    for _ in 0..2 {
+        let at_frame = fb.buffer_y(fb.drawing) == y0;
+        fb.clear(0, 0, 6);
+        centred(font, 106, entry.name_str(), LABEL);
+        centred(font, 122, "LOADING", FAR_LABEL);
+        gpu::draw_sync();
+        psx_rt::interrupts::wait_vblank();
+        fb.swap();
+        if at_frame {
+            break;
+        }
     }
 }
 
-// `scene-core`'s boot splash. Declared last, and called from a line that was blank, so no line of
-// the default build moves.
+// The boot splash, from boot-only memory.
 mod boot;

@@ -14,6 +14,7 @@ version = "0.1.0"
 dependencies = [
  "psx-asset",
  "psx-carousel",
+ "psx-core",
  "psx-disc-toc",
  "psx-display",
  "psx-font",
@@ -44,6 +45,14 @@ name = "psx-carousel"
 version = "0.1.0"
 dependencies = [
  "psx-math",
+]
+
+[[package]]
+name = "psx-core"
+version = "0.1.0"
+dependencies = [
+ "psx-hw",
+ "psx-scene-abi",
 ]
 
 [[package]]
@@ -142,6 +151,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "psx-scene-abi"
+version = "0.1.0"
+
+[[package]]
 name = "psx-sfx"
 version = "0.2.0"
 dependencies = [
@@ -159,6 +172,7 @@ dependencies = [
  "psx-gpu",
  "psx-pad",
  "psx-rt",
+ "psx-scene-abi",
  "psx-vram",
 ]
 

@@ -15,44 +15,53 @@ PSX_FLAGS := --release --target $(PSX_TARGET) -Zjson-target-spec -Zbuild-std=cor
 # their file names stay out of the image, and psx-rt's exception handler records Cause/EPC/BadVAddr
 # (__psx_rt_fault_*; `psoxide-size faults` reads them from a RAM dump). PSOXIDE_PANIC_MESSAGES=1 restores the
 # formatted panic.
-PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,-Zunstable-options -Cpanic=immediate-abort)
-# RAM the launcher and the games link for, as a `-T` file ahead of psoxide.ld (the way psoxide.ld:16-21
-# asks, so each link map records the value). 0x1FE000 puts STACK_INIT at 0x801FDF00 and leaves
-# 0x801FDF00..0x80200000 to the scene system's resident core window (8,192 B) and its 256 B handoff
-# block. PROVISIONAL: the number comes from the scene-system plan (campaign scene-system-1123, PLAN.md 3.2)
-# and the first real core build may move it. The value is in the file name so a change relinks (cargo
-# sees new RUSTFLAGS). The chain-load blob links by loader/loader.ld and does not use it.
+PANIC_RUSTFLAGS = $(if $(filter-out 0,$(PSOXIDE_PANIC_MESSAGES)),,"-Zunstable-options", "-Cpanic=immediate-abort",)
+
+# Every program runs on the SDK's scene core (SCENES.md, CORE-ABI 4.1): linked with the RAM top below the
+# core's window (0x1FE000: STACK_INIT 0x801FDF00, the window 0x801FDF00..0x801FFF00, the handoff block
+# above it), then psoxide-core.ld (the core's stored image and `__core_boot`), the launcher also
+# psoxide-boot.ld (the boot splash in boot-only memory), then psoxide.ld. Sections run apart from where
+# they are stored, so each link is an ELF and the SDK's build driver writes the PS-X EXE from it by load
+# address. The scripts go in a cargo config file each program's build reads (`psoxide-pgo apply` refuses
+# a RUSTFLAGS environment; config rustflags lists join).
 CORE_RAM_SIZE := 0x1FE000
 RAM_SIZE_LD := $(BUILD)/ram-size-$(CORE_RAM_SIZE).ld
-LINK_FLAGS := -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SIZE_LD) -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld -Clink-arg=--oformat=binary
+LINK_SCRIPTS = "-Clink-arg=-T$(RAM_SIZE_LD)", "-Clink-arg=-T$(PSOXIDE)/sdk/psoxide-core.ld",$(1) "-Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld"
+GUEST_RUSTFLAGS = [$(PANIC_RUSTFLAGS) "-Cllvm-args=-disable-mips-df-backward-search", $(call LINK_SCRIPTS,$(1))]
+BOOT_SCRIPT = "-Clink-arg=-T$(PSOXIDE)/sdk/psoxide-boot.ld",
+GAME_CONFIG := $(BUILD)/game-link.toml
+LAUNCHER_CONFIG := $(BUILD)/launcher-link.toml
 
 # FEATURES: cargo features of the launcher and the three games (`journey-state` is the test disc's
 # read-only observation; the shipping build has none). Each variant wants its own BUILD directory
-# (psoxide-test's two builds pass BUILD and DIST): cargo does not relink, so does not rewrite the
-# link maps, for a feature set it has built before.
+# (psoxide-test's two builds pass BUILD and DIST).
 FEATURES ?=
 FEATURE_FLAGS = $(if $(strip $(FEATURES)),--features $(strip $(FEATURES)))
-# LAUNCHER_FEATURES: cargo features of the launcher alone. `scene-core` plays the SDK's boot
-# splash once per disc, from boot-only memory: the launcher links psoxide-boot.ld ahead of
-# psoxide.ld as an ELF (its sections run apart from where they are stored) and psx-exe writes
-# launcher.exe from it by load address, keeping the ELF beside it as launcher.elf. Without it the
-# launcher links exactly as the games do.
-LAUNCHER_FEATURES ?=
-LAUNCHER_BOOT = $(findstring scene-core,$(LAUNCHER_FEATURES))
-LAUNCHER_LINK_FLAGS = $(if $(LAUNCHER_BOOT),-Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-T$(RAM_SIZE_LD) -Clink-arg=-T$(PSOXIDE)/sdk/psoxide-boot.ld -Clink-arg=-T$(PSOXIDE)/sdk/psoxide.ld,$(LINK_FLAGS))
-LAUNCHER_FEATURE_FLAGS = $(if $(strip $(FEATURES) $(LAUNCHER_FEATURES)),--features $(subst $(eval) ,$(comma),$(strip $(FEATURES) $(LAUNCHER_FEATURES))))
-comma := ,
-PSX_EXE := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin psx-exe --
 
-LOADER_BLOB := $(OUT)/loader.exe
+# The build goes through the SDK's shared driver (psoxide-pgo apply, variant off: no profile and no
+# layout): it compiles under its own psoxide-rustc (the checkout directory stays out of the crate
+# hashes), writes the PS-X EXE from the ELF, runs the hazard patcher and scanner, and stamps the
+# architecture gate's receipt (psx-gate.toml) into the image, which a collection disc's press checks.
+# Each program builds in its own target directory, so the newest map in its psoxide-pgo-maps is its
+# own; the EXE and map are copied to OUT under the names the journeys and the harness read.
+PGO := $(PSOXIDE)/target/release/psoxide-pgo
+# $(call APPLY,<crate dir>,<cargo bin name>,<config>,<extra env>)
+define APPLY
+	cd $(1) && $(4) CARGO_TARGET_DIR=$(GUEST_BUILD)/$(2) PSOXIDE=$(PSOXIDE) $(PGO) apply --crate . --variant off -- \
+		build $(PSX_FLAGS) --config $(3) $(FEATURE_FLAGS)
+	@mkdir -p $(OUT)
+	cp $(GUEST_BUILD)/$(2)/$(PSX_TARGET)/release/$(2).exe $(OUT)/$(2).exe
+	cp "$$(/bin/ls -t $(GUEST_BUILD)/$(2)/$(PSX_TARGET)/psoxide-pgo-maps/*.map | head -1)" $(OUT)/$(2).map
+endef
+
 LAUNCHER_EXE := $(OUT)/launcher.exe
 BREAKOUT_EXE := $(OUT)/game-breakout.exe
 INVADERS_EXE := $(OUT)/game-invaders.exe
 MAGIKARP_EXE := $(OUT)/game-magikaaaaaarp-pong.exe
 DISC := $(DIST)/psoxide-arcade.cue
+# The launcher's table of contents (`mkdisc toc`), compiled into it.
+TOC_BIN := $(BUILD)/DEMOTOC.BIN
 
-SHOT_NAMES := breakout breakout2 invaders invaders2 pong pong2
-SHOT_FILES := $(foreach name,$(SHOT_NAMES),$(BUILD)/shots/$(name).shot)
 CARD_TEX := $(BUILD)/cards/arcade-cards.tex
 CARD_CLUT := $(BUILD)/cards/arcade-cards.clut
 CARD_PREVIEW := $(BUILD)/cards/arcade-cards.png
@@ -65,7 +74,7 @@ MUSIC_DIR := $(ROOT)/arcade-assets/audio/xa
 MUSIC_XA := $(MUSIC_DIR)/MUSIC1.XA
 SPECTRUM_BIN := $(ROOT)/games/magikarp-pong/assets/goncharov_spectrum_16x30hz.bin
 
-.PHONY: help psoxide repro-rustc loader launcher games mkdisc shots cards music disc install check run clean
+.PHONY: help psoxide sdk-tools link-configs launcher games mkdisc toc cards music disc install check run clean
 
 help:
 	@echo "make disc   - build the three games and standalone PSoXide Arcade disc"
@@ -80,37 +89,11 @@ help:
 # tool is installed once per revision under target/. COMPONENTS_REV is the
 # lock's SDK revision (the psoxide-components binary first exists at e6ec267).
 # PSOXIDE_FROM=/path/to/tree overrides the lock with a working tree.
-COMPONENTS_REV := 610b97fb661c51ddaeb018374aa46cb46acd3131
+COMPONENTS_REV := f590e3619afe38477125b93fd14a563d1606e1ef
 COMPONENTS := $(ROOT)/target/psoxide-components/$(COMPONENTS_REV)
-# Guest builds run under the SDK's psoxide-rustc, so the checkout directory does
-# not reach the crate hashes: the same commit gives the same executables from
-# any directory (proved by the SDK's repro-gate).
-REPRO_RUSTC := $(PSOXIDE)/target/release/psoxide-rustc
-REPRO := RUSTC_WRAPPER=$(REPRO_RUSTC) PSOXIDE_REPRO_ROOT=$(ROOT)
-HAZARD_SCAN := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-scan --
-# The SDK linker script leaves the flat file short of the sector boundary its
-# header claims; hazard-patch (with the link map) appends those zeros and
-# reroutes any load-delay hazard, so every EXE that goes on the disc passes it.
-HAZARD_PATCH := cargo run -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-hazard --bin hazard-patch --
-
-psoxide:
-	@if [ -n "$(PSOXIDE_FROM)" ]; then \
-		cargo run -q --manifest-path "$(PSOXIDE_FROM)/tools/psoxide-link/Cargo.toml" --bin psoxide-link -- \
-			--from "$(PSOXIDE_FROM)" --into "$(PSOXIDE)"; \
-	else \
-		grep -q '$(COMPONENTS_REV)' "$(ROOT)/components.lock.json" || { echo "COMPONENTS_REV is not the lock's SDK revision"; exit 1; }; \
-		[ -x "$(COMPONENTS)/bin/psoxide-components" ] || cargo install -q --locked \
-			--git https://github.com/EBonura/PSoXide --rev $(COMPONENTS_REV) --root "$(COMPONENTS)" psoxide-link; \
-		"$(COMPONENTS)/bin/psoxide-components" --root "$(PSOXIDE)" --lock "$(ROOT)/components.lock.json"; \
-	fi
-
-repro-rustc: psoxide
-	cargo build -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-pgo --bin psoxide-rustc
-
-loader: repro-rustc
-	cd loader && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
-		RUSTFLAGS="$(PANIC_RUSTFLAGS) -Cllvm-args=-disable-mips-df-backward-search -Clink-arg=-Tloader.ld -Clink-arg=--oformat=binary" \
-		cargo build $(PSX_FLAGS)
+# The SDK's build driver and its repro wrapper, built once per pin under .psoxide/target.
+sdk-tools: psoxide
+	cargo build -q --release --locked --manifest-path $(PSOXIDE)/Cargo.toml -p psoxide-pgo --bin psoxide-pgo --bin psoxide-rustc
 
 $(CARD_STAMP): $(CARD_SOURCES) tools/cook-arcade-cards.py
 	@mkdir -p $(BUILD)/cards
@@ -124,48 +107,49 @@ $(RAM_SIZE_LD):
 	@mkdir -p $(BUILD)
 	printf 'RAM_SIZE_OVERRIDE = %s;\n' $(CORE_RAM_SIZE) > $@
 
-launcher: loader cards $(RAM_SIZE_LD)
-	cd launcher && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) \
-		LOADER_BLOB=$(LOADER_BLOB) DISC_VERSION=v$(VERSION) \
-		ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT) \
-		RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LAUNCHER_LINK_FLAGS) -Clink-arg=-Map=$(OUT)/launcher.map" cargo build $(PSX_FLAGS) $(LAUNCHER_FEATURE_FLAGS)
-	$(if $(LAUNCHER_BOOT),if head -c 4 "$(LAUNCHER_EXE)" | grep -q ELF; then cp "$(LAUNCHER_EXE)" "$(LAUNCHER_EXE:.exe=.elf)" && $(PSX_EXE) "$(LAUNCHER_EXE:.exe=.elf)" "$(LAUNCHER_EXE).part" && mv "$(LAUNCHER_EXE).part" "$(LAUNCHER_EXE)"; fi)
-
-games: repro-rustc $(RAM_SIZE_LD)
-	cd games/breakout && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-breakout.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
-	cd games/invaders && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-invaders.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
-	cd games/magikarp-pong && $(REPRO) CARGO_TARGET_DIR=$(GUEST_BUILD) RUSTFLAGS="$(PANIC_RUSTFLAGS) $(LINK_FLAGS) -Clink-arg=-Map=$(OUT)/game-magikaaaaaarp-pong.map" cargo build $(PSX_FLAGS) $(FEATURE_FLAGS)
+# Rewritten on every build: the paths and the panic policy are inputs (cargo reruns when a flag changes).
+link-configs: $(RAM_SIZE_LD)
+	printf '[target.%s]\nrustflags = %s\n' $(PSX_TARGET) '$(call GUEST_RUSTFLAGS,)' > $(GAME_CONFIG)
+	printf '[target.%s]\nrustflags = %s\n' $(PSX_TARGET) '$(call GUEST_RUSTFLAGS,$(BOOT_SCRIPT))' > $(LAUNCHER_CONFIG)
 
 mkdisc: psoxide
 	cd tools/mkdisc && cargo build --release
 
-$(BUILD)/shots/%.shot: assets/shots/%.png tools/cook-shots.py
-	@mkdir -p $(BUILD)/shots
-	python3 tools/cook-shots.py "$<" "$@"
-
-shots: $(SHOT_FILES)
-
-disc: launcher games mkdisc shots
-	@for exe in $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do $(HAZARD_PATCH) "$$exe" --map "$${exe%.exe}.map" || exit 1; done
-	@for exe in $(LOADER_BLOB) $(LAUNCHER_EXE) $(BREAKOUT_EXE) $(INVADERS_EXE) $(MAGIKARP_EXE); do $(HAZARD_SCAN) "$$exe" || exit 1; done
-	@mkdir -p $(DIST)
-	$(MKDISC) --launcher $(LAUNCHER_EXE) --out $(DIST)/psoxide-arcade.bin --volume PSXARCADE \
-		--game "BREAKOUT=$(BREAKOUT_EXE)" \
-		--game "SPACE INVADERS=$(INVADERS_EXE)" \
-		--game "MAGIKAAAAARP PONG=$(MAGIKARP_EXE)" \
-		--xa $(MUSIC_XA) \
-		--shot "BREAKOUT=$(BUILD)/shots/breakout.shot" \
-		--shot "BREAKOUT=$(BUILD)/shots/breakout2.shot" \
-		--shot "SPACE INVADERS=$(BUILD)/shots/invaders.shot" \
-		--shot "SPACE INVADERS=$(BUILD)/shots/invaders2.shot" \
-		--shot "MAGIKAAAAARP PONG=$(BUILD)/shots/pong.shot" \
-		--shot "MAGIKAAAAARP PONG=$(BUILD)/shots/pong2.shot" \
+# The launcher's card text: one entry per game, in scene order (scenes.manifest: game i is scene i + 1).
+toc: mkdisc
+	@mkdir -p $(BUILD)
+	$(MKDISC) toc --out $(TOC_BIN) \
+		--game "BREAKOUT" \
+		--game "SPACE INVADERS" \
+		--game "MAGIKAAAAARP PONG" \
 		--version-of "BREAKOUT=0.1.0" \
 		--version-of "SPACE INVADERS=0.1.0" \
 		--version-of "MAGIKAAAAARP PONG=0.1.0" \
 		--describe "BREAKOUT=A complete Breakout clone with responsive controls, collision, sound, scoring and a persistent high score.|Un clone completo di Breakout con controlli reattivi, collisioni, audio, punti e record persistente." \
 		--describe "SPACE INVADERS=A complete Space Invaders clone with marching formations, shields, enemy fire, scoring and three difficulty levels.|Un clone completo di Space Invaders con formazioni, scudi, fuoco nemico, punti e tre livelli di difficolta." \
 		--describe "MAGIKAAAAARP PONG=Pong with XA music and spectrum bars. Goncharov by magikAAAAArp.|Pong con musica XA e barre dello spettro. Goncharov dei magikAAAAArp."
+
+launcher: sdk-tools cards toc link-configs
+	$(call APPLY,launcher,launcher,$(LAUNCHER_CONFIG),DISC_VERSION=v$(VERSION) ARCADE_TOC=$(TOC_BIN) ARCADE_CARDS_TEX=$(CARD_TEX) ARCADE_CARDS_CLUT=$(CARD_CLUT))
+
+games: sdk-tools link-configs
+	$(call APPLY,games/breakout,game-breakout,$(GAME_CONFIG),)
+	$(call APPLY,games/invaders,game-invaders,$(GAME_CONFIG),)
+	$(call APPLY,games/magikarp-pong,game-magikaaaaaarp-pong,$(GAME_CONFIG),)
+
+# The scene disc, pressed by the SDK's mkisopsx (scenes.manifest): SCENES.TBL at LBA 22, the launcher
+# (image 0, scene 0) at 23, the three games as Programs of the same table, MUSIC1.XA as a root file
+# Magikaaaaarp Pong finds by name. Every program is checked against the SDK's prebuilt core image,
+# and the launcher's gate receipt against psx-gate.toml.
+CORE_IMAGE := $(PSOXIDE)/sdk/crates/psx-core/prebuilt/psx-core.bin
+disc: launcher games
+	cp scenes.manifest $(OUT)/scenes.manifest
+	@mkdir -p $(DIST)
+	cd $(PSOXIDE)/tools/mkisopsx && cargo run -q --release -- \
+		--exe $(LAUNCHER_EXE) --out $(DIST)/psoxide-arcade.bin --volume PSXARCADE \
+		--gate-file $(ROOT)/psx-gate.toml \
+		--scenes $(OUT)/scenes.manifest --core-image $(CORE_IMAGE) \
+		--xa-file $(MUSIC_XA)
 
 # Install into a PSoXide games library under its library name, replacing the previous install in
 # place. Quoted: the library name has spaces and parentheses. `mkdisc install --cue dist/psoxide-arcade.cue

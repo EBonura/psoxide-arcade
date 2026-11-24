@@ -1,0 +1,13 @@
+# PSoXide Arcade's scene disc (mkisopsx --scenes, SCENES.md): one table, four Programs on the scene
+# core. The launcher (image 0, the boot exe: `-` is mkisopsx's --exe) starts each game with a core
+# switch; game i is scene i + 1, the order the launcher's table of contents lists them (Makefile
+# `toc`). No game switches anywhere, so there is no way back to the launcher. Files are the build's
+# EXEs, beside the copy of this manifest the Makefile puts in the build directory.
+program PSX.EXE      -
+program BREAKOUT.EXE game-breakout.exe
+program INVADERS.EXE game-invaders.exe
+program PONG.EXE     game-magikaaaaaarp-pong.exe
+scene   ARCADE       PSX.EXE      start
+scene   BREAKOUT     BREAKOUT.EXE start
+scene   INVADERS     INVADERS.EXE start
+scene   PONG         PONG.EXE     start
