@@ -11,3 +11,7 @@ invaders schedule (tick:button:hold):
 pong schedule (tick:button:hold):
 200:right:6,260:right:6,320:cross:4,700:start:4,800:up:20,845:down:20,890:up:20,935:down:20,980:up:20,1025:down:20,1070:up:20,1115:down:20,1160:up:20,1205:down:20,1250:up:20,1295:down:20,1340:up:20,1385:down:20,1430:up:20,1475:down:20
 
+
+Anchored copies (11-24, scene core): pgo/NAME.anchored.pxtape = pgo/NAME.pxtape re-anchored with
+`psoxide-test tape-anchor --tape pgo/NAME.pxtape --at-poll 3 --out pgo/NAME.anchored.pxtape`, so the boot
+splash in front moves neither tape nor window ([[speed]] anchor ARCADE_MENU_READY; psoxide-test.toml).

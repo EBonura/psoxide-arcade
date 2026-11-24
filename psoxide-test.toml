@@ -119,24 +119,36 @@ name = "PSoXide Arcade (psoxide-arcade)"
 # in the installed build (work 14,325 per frame) and does not at this pin, so its work figure reads as
 # the whole frame (452,983) and only a frame that misses its vblank would move it; the same happens in
 # PSXcel (see its psoxide-test.toml). [[speed]] has no key that passes `--wait-range` to name the loop.
+#
+# Anchored on the launcher's first usable screen (ARCADE_MENU_READY, 11-24), so the boot splash in front
+# moves neither the tape nor the window: pgo/NAME.anchored.pxtape is pgo/NAME.pxtape re-anchored with
+# `psoxide-test tape-anchor --at-poll 3` (the menu's first frame comes with port 1's third poll on the
+# installed build fce1f6855bc1, tick 17, and ARCADE_MENU_READY turns 1 at the third poll on a build
+# without the splash, tick 14), and each window is its old polls counted from that anchor.
 
 [[speed]]
 name = "breakout"
 build = "ship"
-tape = "pgo/breakout.pxtape"
-polls = [760, 1000]
+anchor = { kind = "ram", sym = "ARCADE_MENU_READY", size = 4, op = "nonzero" }
+anchor_max_polls = 600
+tape = "pgo/breakout.anchored.pxtape"
+polls = [757, 997]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 
 [[speed]]
 name = "invaders"
 build = "ship"
-tape = "pgo/invaders.pxtape"
-polls = [760, 1000]
+anchor = { kind = "ram", sym = "ARCADE_MENU_READY", size = 4, op = "nonzero" }
+anchor_max_polls = 600
+tape = "pgo/invaders.anchored.pxtape"
+polls = [757, 997]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
 
 [[speed]]
 name = "pong"
 build = "ship"
-tape = "pgo/pong.pxtape"
-polls = [850, 1350]
+anchor = { kind = "ram", sym = "ARCADE_MENU_READY", size = 4, op = "nonzero" }
+anchor_max_polls = 600
+tape = "pgo/pong.anchored.pxtape"
+polls = [847, 1347]
 offsets = [-48, -36, -24, -12, 0, 12, 24, 36]
